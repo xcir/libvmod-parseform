@@ -43,6 +43,7 @@ Description
 	If POST have multiple-key, join with glue.
 	Only used in vcl_recv.
 	Need to call std.cache_req_body before using this.
+	Support content-type is "application/x-www-form-urlencoded" and "multipart/form-data".
 Parseform
         ::
 
