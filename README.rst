@@ -1,6 +1,18 @@
-============
+===============
 vmod-parseform
-============
+===============
+
+
+-------------------------------
+Parse to POST request
+-------------------------------
+
+:Author: Shohei Tanaka(@xcir)
+:Date: not released yet
+:Version: not released yet
+:Support Varnish Version: 5.1.x
+:Manual section: 3
+
 
 SYNOPSIS
 ========
@@ -23,15 +35,26 @@ hello
 Prototype
         ::
 
-                hello(STRING S)
+                get(STRING key, STRING glue=", ")
 Return value
 	STRING
 Description
-	Returns "Hello, " prepended to S
+	Get POST value.
+	If POST have multiple-key, join with glue.
+	Only used in vcl_recv.
+	Need to call std.cache_req_body before using this.
 Parseform
         ::
 
-                set resp.http.hello = parseform.hello("World");
+                import std;
+                import parseform;
+                sub vcl_recv{
+                    
+                    std.cache_req_body(1MB);
+                    if(parseform.get("postkey")){
+                        ...
+                    }
+                }
 
 INSTALLATION
 ============
