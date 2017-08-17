@@ -1,0 +1,27 @@
+varnishtest "multipart"
+
+server s1 {
+       rxreq
+       expect req.http.t1 == "456, 012"
+       txresp
+} -start
+
+varnish v1 -vcl+backend {
+	import std;
+	import ${vmod_parseform};
+
+
+	sub vcl_recv {
+		std.cache_req_body(1MB);
+		set req.http.t1 = parseform.get(key="cd");
+	}
+} -start
+
+
+client c1 {
+	txreq -url "/" -req "POST" -hdr "Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryK8B97StehNVcCwiH" -body "------WebKitFormBoundaryK8B97StehNVcCwiH\r\nContent-Disposition: form-data; name=\"ab\"\r\n\r\n123\r\n------WebKitFormBoundaryK8B97StehNVcCwiH\r\nContent-Disposition: form-data; name=\"file\"; filename=\"\"\r\nContent-Type: application/octet-stream\r\n\r\n\r\n------WebKitFormBoundaryK8B97StehNVcCwiH\r\nContent-Disposition: form-data; name=\"cd\"\r\n\r\n456\r\n------WebKitFormBoundaryK8B97StehNVcCwiH\r\nContent-Disposition: form-data; name=\"ef\"\r\n\r\n789\r\n------WebKitFormBoundaryK8B97StehNVcCwiH\r\nContent-Disposition: form-data; name=\"cd\"\r\n\r\n012\r\n------WebKitFormBoundaryK8B97StehNVcCwiH\r\nContent-Disposition: form-data; name=\"submit_btn\"\r\n\r\n&#36865;&#20449;\r\n------WebKitFormBoundaryK8B97StehNVcCwiH--"
+	rxresp
+}
+
+client c1 -run
+
