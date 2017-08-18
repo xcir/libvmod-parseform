@@ -25,7 +25,7 @@ client c1 {
 #c
 #a1=b
 
-	txreq -url "/" -req "POST" -hdr "Content-Type: text/plain" -body "a1=a\r\na2=b\r\nzz=a\r\nc\r\na1=b"
+	txreq -url "/" -req "POST" -hdr "Content-Type: text/plain" -body "ba1=a\r\na1=a\r\na2=b\r\nzz=a\r\nc\r\na1=b"
 	rxresp
 }
 

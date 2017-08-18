@@ -21,7 +21,7 @@ varnish v1 -vcl+backend {
 
 
 client c1 {
-	txreq -url "/" -req "POST" -hdr "Content-Type: application/x-www-form-urlencoded" -body "test=abc&a=1&a=2"
+	txreq -url "/" -req "POST" -hdr "Content-Type: application/x-www-form-urlencoded" -body "xtest=def&test=abc&ba=3&a=1&a=2"
 	rxresp
 }
 
