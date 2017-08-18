@@ -208,11 +208,12 @@ VCL_STRING search_urlencoded(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb
 		eq = memchr(p,'=',last -p);
 		if(eq == NULL) break;
 		p  = eq +1;
-		if(eq - keylen < porg){
+		pkey = eq -keylen;
+		if(pkey < porg){
 			continue;
 		}
-		pkey = eq -keylen;
-		if(!memcmp(pkey, key,keylen)){
+		
+		if((pkey == porg|| (pkey-1)[0] == '&') && !memcmp(pkey, key,keylen)){
 			if(rp > rpp){
 				memcpy(rp,glue,glen);
 				rp+=glen;
