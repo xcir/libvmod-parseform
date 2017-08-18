@@ -55,7 +55,7 @@ VRB_Blob(VRT_CTX, struct vsb *vsb)
 }
 VCL_STRING search_plain(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb *vsb){
 
-	char *st,*nxt, *eq,*lim,*ta,*tl,*nxeq;
+	char *st,*nxt, *eq,*lim,*nxeq;
 	st =nxt = VSB_data(vsb);
 	char *last = st+ VSB_len(vsb);
 	ssize_t glen,keylen,bodylen;
@@ -76,17 +76,8 @@ VCL_STRING search_plain(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb *vsb
 		if(!nxeq){
 			lim = last;
 		}else{
-			tl = ta = eq;
-			
-			while(1){
-				ta = memmem(ta,last-ta,"\r\n",2);
-				if(!ta || nxeq < ta){
-					lim = tl;
-					break;
-				}
-				tl = ta;
-				ta+=2;
-			}
+			lim = memrchr(eq,'\r',nxeq - eq);
+			if(lim[1]!='\n') break;
 		}
 		if(keylen == eq -st   && !memcmp(st, key,keylen)){
 			if(rp > rpp){
