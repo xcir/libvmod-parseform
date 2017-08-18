@@ -106,9 +106,9 @@ VCL_STRING search_plain(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb *vsb
 		WS_Release(ctx->ws, 0);
 		return "";
 	}
+	rp[0] = 0;
 	rp++;
 	u--;
-	rp[0] = 0;
 	WS_Release(ctx->ws, rp - rpp);
 	return rpp;
 }
@@ -181,9 +181,9 @@ VCL_STRING search_multipart(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb 
 		WS_Release(ctx->ws, 0);
 		return "";
 	}
+	rp[0] = 0;
 	rp++;
 	u--;
-	rp[0] = 0;
 	WS_Release(ctx->ws, rp - rpp);
 	return rpp;
 
@@ -202,7 +202,6 @@ VCL_STRING search_urlencoded(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb
 	u = WS_Reserve(ctx->ws, 0);
 	char *rpp,*rp;
 	rpp = rp = ctx->ws->f;
-	
 	
 	while(1){
 		eq = memchr(p,'=',last -p);
@@ -223,11 +222,10 @@ VCL_STRING search_urlencoded(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb
 			if(amp==NULL){
 				//last
 				bodylen =last -p;
-				p +=bodylen;
 			}else{
-				bodylen =amp-eq-1;
-				p = amp +1;
+				bodylen =amp -p;
 			}
+			p+=bodylen;
 			if(u < bodylen + glen + 1){
 				WS_Release(ctx->ws, 0);
 				WS_MarkOverflow(ctx->ws);
@@ -244,9 +242,9 @@ VCL_STRING search_urlencoded(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb
 		WS_Release(ctx->ws, 0);
 		return "";
 	}
+	rp[0] = 0;
 	rp++;
 	u--;
-	rp[0] = 0;
 	WS_Release(ctx->ws, rp - rpp);
 	return rpp;
 }
