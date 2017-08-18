@@ -53,18 +53,6 @@ VRB_Blob(VRT_CTX, struct vsb *vsb)
 		return;
 	}
 }
-
-/*
-Content-Type:text/plain
-
-=と改行のペア探す感じでやる
-name=a
-name2=b
-kanso=a
-c
-name=b
-*/
-
 VCL_STRING search_plain(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb *vsb){
 
 	char *st,*nxt, *eq,*lim,*ta,*tl,*nxeq;
