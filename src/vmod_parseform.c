@@ -151,7 +151,7 @@ VCL_STRING search_multipart(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb 
 		st+=2;
 		lim = memmem(st,last-st,"\r\n\r\n",4);
 		name= memmem(st,last-st," name=\"",7);
-		if(name ==NULL || lim < name) break;
+		if(name ==NULL || lim==NULL || lim < name) break;
 		name+=7;
 		lim +=4;
 		namelim= memchr(name,'"',last -name);
