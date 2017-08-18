@@ -67,26 +67,71 @@ name=b
 
 VCL_STRING search_plain(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb *vsb){
 
-	char *p,*porg, *eq;
-	p = porg= VSB_data(vsb);
-	ssize_t len,orglen,glen,keylen;
-	len=orglen= VSB_len(vsb);
+	char *st,*nxt, *eq,*lim,*ta,*tl,*nxeq;
+	st =nxt = VSB_data(vsb);
+	char *last = st+ VSB_len(vsb);
+	ssize_t glen,keylen,bodylen;
 	glen = strlen(glue);
 	keylen = strlen(key);
-	eq = memchr(p,'=',len);
+	eq = memchr(st,'=',last-st);
 	
 	if(!eq) return "";
+	unsigned u;
+	u = WS_Reserve(ctx->ws, 0);
+	char *rpp,*rp;
+	rpp = rp = ctx->ws->f;
 	
 	while(1){
-		keylen = eq-p;
+		if(!eq)break;
 		
-		if(keylen == eq -p   && !memcmp(p, key,keylen)){
+		nxeq = memchr(eq+1,'=',last-eq-1);
+		if(!nxeq){
+			lim = last;
+		}else{
+			tl = ta = eq;
 			
-			syslog(6,"xx:%s %ld",p,glen);
+			while(1){
+				ta = memmem(ta,last-ta,"\r\n",2);
+				if(!ta || nxeq < ta){
+					lim = tl;
+					break;
+				}
+				tl = ta;
+				ta+=2;
+			}
 		}
+		if(keylen == eq -st   && !memcmp(st, key,keylen)){
+			if(rp > rpp){
+				memcpy(rp,glue,glen);
+				rp+=glen;
+				u-=glen;
+			}
+			bodylen = lim-eq-1;
+			if(u < bodylen + glen + 1){
+				WS_Release(ctx->ws, 0);
+				WS_MarkOverflow(ctx->ws);
+				return "";
+			}
+			
+			memcpy(rp,eq+1, bodylen);
+			rp+=bodylen;
+			u-=bodylen;
+
+		}
+		st = lim+2;
+		eq = nxeq;
+		if(st > last)break;
 	}
 	
-	return "";
+	if(rp == rpp){
+		WS_Release(ctx->ws, 0);
+		return "";
+	}
+	rp++;
+	u--;
+	rp[0] = 0;
+	WS_Release(ctx->ws, rp - rpp);
+	return rpp;
 }
 VCL_STRING search_multipart(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb *vsb){
 	char *st,*nxt;

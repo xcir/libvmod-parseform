@@ -1,0 +1,33 @@
+varnishtest "multipart"
+
+server s1 {
+       rxreq
+       expect req.http.t1 == "a, b"
+       txresp
+} -start
+
+varnish v1 -vcl+backend {
+	import std;
+	import ${vmod_parseform};
+
+
+	sub vcl_recv {
+		std.cache_req_body(1MB);
+		set req.http.t1 = parseform.get(key="a1");
+	}
+} -start
+
+
+client c1 {
+#a1=a
+#a2=b
+#zz=a
+#c
+#a1=b
+
+	txreq -url "/" -req "POST" -hdr "Content-Type: text/plain" -body "a1=a\r\na2=b\r\nzz=a\r\nc\r\na1=b"
+	rxresp
+}
+
+client c1 -run
+
