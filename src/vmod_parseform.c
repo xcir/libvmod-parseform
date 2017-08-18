@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #include "config.h"
 
 #include <stdio.h>
@@ -52,14 +54,48 @@ VRB_Blob(VRT_CTX, struct vsb *vsb)
 	}
 }
 
+/*
+Content-Type:text/plain
 
+=と改行のペア探す感じでやる
+name=a
+name2=b
+kanso=a
+c
+name=b
+*/
+
+VCL_STRING search_plain(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb *vsb){
+
+	char *p,*porg, *eq;
+	p = porg= VSB_data(vsb);
+	ssize_t len,orglen,glen,keylen;
+	len=orglen= VSB_len(vsb);
+	glen = strlen(glue);
+	keylen = strlen(key);
+	eq = memchr(p,'=',len);
+	
+	if(!eq) return "";
+	
+	while(1){
+		keylen = eq-p;
+		
+		if(keylen == eq -p   && !memcmp(p, key,keylen)){
+			
+			syslog(6,"xx:%s %ld",p,glen);
+		}
+	}
+	
+	return "";
+}
 VCL_STRING search_multipart(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb *vsb){
 	char *st,*nxt;
 	char *lim,*name,*namelim;
 
 	st = nxt = VSB_data(vsb);
+	char *last = st + VSB_len(vsb);
 	const char *tmp= VRT_GetHdr(ctx, &VGC_HDR_REQ_content_2d_type);
-	char *raw_boundary = strstr(tmp,"; boundary=");
+	char *raw_boundary = memmem(tmp,last -tmp,"; boundary=",11);
 	if(!raw_boundary) return "";
 	raw_boundary+=11;
 	
@@ -71,7 +107,7 @@ VCL_STRING search_multipart(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb 
 	boundary[strlen(raw_boundary)+2] = 0;
 	
 	ssize_t boundary_len = strlen(boundary);
-	st = strstr(nxt, boundary) + boundary_len;
+	st = memmem(nxt,last-nxt, boundary,boundary_len) + boundary_len;
 	if(!st) return"";
 	ssize_t keylen   = strlen(key);
 	ssize_t bodylen,glen;
@@ -84,18 +120,17 @@ VCL_STRING search_multipart(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb 
 
 	
 	while(1){
-		//次のboundary
-		nxt = strstr(st, boundary);
+		nxt = memmem(st,last-st, boundary,boundary_len);
 		if(!nxt) break;
 		
 		if(st[0]!='\r' || st[1] != '\n') break;
 		st+=2;
-		lim = strstr(st,"\r\n\r\n");
-		name= strstr(st," name=\"");
+		lim = memmem(st,last-st,"\r\n\r\n",4);
+		name= memmem(st,last-st," name=\"",7);
 		if(name ==NULL || lim < name) break;
 		name+=7;
 		lim +=4;
-		namelim= strstr(name,"\"");
+		namelim= memchr(name,'"',last -name);
 		if(namelim ==NULL || lim < namelim) break;
 		if(keylen == namelim - name  && !memcmp(name, key,keylen)){
 			if(rp > rpp){
@@ -118,7 +153,10 @@ VCL_STRING search_multipart(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb 
 		st = nxt + boundary_len;
 	}
 
-	if(rp == rpp) return "";
+	if(rp == rpp){
+		WS_Release(ctx->ws, 0);
+		return "";
+	}
 	rp++;
 	u--;
 	rp[0] = 0;
@@ -132,9 +170,9 @@ VCL_STRING search_urlencoded(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb
 	p = porg= VSB_data(vsb);
 	char *eq,*amp;
 	ssize_t bodylen;
-	ssize_t len,orglen,glen;
+	ssize_t glen;
 	glen = strlen(glue);
-	len=orglen= VSB_len(vsb);
+	char *last = porg + VSB_len(vsb);
 	ssize_t keylen   = strlen(key);
 	unsigned u;
 	u = WS_Reserve(ctx->ws, 0);
@@ -143,10 +181,9 @@ VCL_STRING search_urlencoded(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb
 	
 	
 	while(1){
-		eq = memchr(p,'=',len);
+		eq = memchr(p,'=',last -p);
 		if(eq == NULL) break;
 		p  = eq +1;
-		len = orglen-(p -porg);
 		if(eq - keylen < porg){
 			continue;
 		}
@@ -157,16 +194,14 @@ VCL_STRING search_urlencoded(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb
 				rp+=glen;
 				u-=glen;
 			}
-			amp = memchr(p,'&',len);
+			amp = memchr(p,'&',last -p);
 			if(amp==NULL){
 				//last
-				bodylen =len;
-				p +=len;
-				len = orglen-(p -porg);
+				bodylen =last -p;
+				p +=bodylen;
 			}else{
 				bodylen =amp-eq-1;
 				p = amp +1;
-				len = orglen-(p -porg);
 			}
 			if(u < bodylen + glen + 1){
 				WS_Release(ctx->ws, 0);
@@ -180,7 +215,10 @@ VCL_STRING search_urlencoded(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb
 			
 		}
 	}
-	if(rp == rpp) return "";
+	if(rp == rpp){
+		WS_Release(ctx->ws, 0);
+		return "";
+	}
 	rp++;
 	u--;
 	rp[0] = 0;
@@ -192,22 +230,6 @@ VCL_STRING search_urlencoded(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb
 int __match_proto__(vmod_event_f)
 event_function(VRT_CTX, struct vmod_priv *priv, enum vcl_event_e e)
 {
-
-
-	switch (e) {
-	case VCL_EVENT_LOAD:
-		break;
-	case VCL_EVENT_WARM:
-		break;
-	case VCL_EVENT_COLD:
-		break;
-	case VCL_EVENT_DISCARD:
-		return (0);
-		break;
-	default:
-		return (0);
-	}
-
 	return (0);
 }
 
@@ -251,6 +273,8 @@ vmod_get(VRT_CTX, struct vmod_priv *priv, VCL_STRING key, VCL_STRING glue)
 		return search_urlencoded(ctx, key, glue, ((struct vmod_priv_parseform *)priv->priv)->vsb);
 	}else if(strlen(ctype) > 19 && !memcmp(ctype, "multipart/form-data",19)){
 		return search_multipart (ctx, key, glue, ((struct vmod_priv_parseform *)priv->priv)->vsb);
+	}else if(!strcmp(ctype, "text/plain")){
+		return search_plain     (ctx, key, glue, ((struct vmod_priv_parseform *)priv->priv)->vsb);
 	}
 	return "";
 }
