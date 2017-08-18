@@ -4,6 +4,7 @@ server s1 {
        rxreq
        expect req.http.t1 == "abc"
        expect req.http.t2 == "1, 2"
+       expect req.http.t3 == ""
        txresp
        rxreq
        expect req.http.t1 == "abc"
@@ -11,7 +12,7 @@ server s1 {
        txresp
        rxreq
        expect req.http.t1 == "abc"
-       expect req.http.t2 == "1, 2"
+       expect req.http.t2 == "1, 2, 3"
        txresp
 } -start
 
@@ -24,6 +25,7 @@ varnish v1 -vcl+backend {
 		std.cache_req_body(1MB);
 		set req.http.t1 = parseform.get("test");
 		set req.http.t2 = parseform.get("a");
+		set req.http.t3 = parseform.get("zzz");
 		return(pass);
 	}
 } -start
@@ -32,7 +34,7 @@ varnish v1 -vcl+backend {
 client c1 {
 	txreq -url "/" -req "POST" -hdr "Content-Type: application/x-www-form-urlencoded" -body "xtest=def&test=abc&xtest=&ba=3&a=1&a=2"
 	txreq -url "/" -req "POST" -hdr "Content-Type: application/x-www-form-urlencoded" -body "xtest=def&&test=abc&ba=3&a=1&a=2"
-	txreq -url "/" -req "POST" -hdr "Content-Type: application/x-www-form-urlencoded" -body "xtest===def&&test=abc&ba=3&a=1&a=2&&&==&a"
+	txreq -url "/" -req "POST" -hdr "Content-Type: application/x-www-form-urlencoded" -body "xtest===def&&test=abc&ba=3&a=1&a=2&&&=3=&a=&a&a=&a=3&&"
 	rxresp
 }
 

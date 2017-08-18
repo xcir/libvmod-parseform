@@ -220,7 +220,6 @@ VCL_STRING search_urlencoded(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb
 			}else{
 				bodylen =amp -p;
 			}
-			p+=bodylen;
 			if(u < bodylen + glen + 1){
 				WS_Release(ctx->ws, 0);
 				WS_MarkOverflow(ctx->ws);
@@ -232,9 +231,10 @@ VCL_STRING search_urlencoded(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb
 				u-=glen;
 			}
 			
-			memcpy(rp,eq +1, bodylen);
+			memcpy(rp,p, bodylen);
 			rp+=bodylen;
 			u-=bodylen;
+			p+=bodylen;
 			
 		}
 	}

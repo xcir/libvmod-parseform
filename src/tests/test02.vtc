@@ -3,6 +3,7 @@ varnishtest "multipart"
 server s1 {
        rxreq
        expect req.http.t1 == "456, 012"
+       expect req.http.t2 == ""
        txresp
 } -start
 
@@ -14,6 +15,7 @@ varnish v1 -vcl+backend {
 	sub vcl_recv {
 		std.cache_req_body(1MB);
 		set req.http.t1 = parseform.get(key="cd");
+		set req.http.t2 = parseform.get(key="cdfdjsa");
 	}
 } -start
 
