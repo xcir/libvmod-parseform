@@ -80,11 +80,6 @@ VCL_STRING search_plain(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb *vsb
 			if(lim[1]!='\n') break;
 		}
 		if(keylen == eq -st   && !memcmp(st, key,keylen)){
-			if(rp > rpp){
-				memcpy(rp,glue,glen);
-				rp+=glen;
-				u-=glen;
-			}
 			bodylen = lim-eq-1;
 			if(u < bodylen + glen + 1){
 				WS_Release(ctx->ws, 0);
@@ -92,6 +87,11 @@ VCL_STRING search_plain(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb *vsb
 				return "";
 			}
 			
+			if(rp > rpp && bodylen){
+				memcpy(rp,glue,glen);
+				rp+=glen;
+				u-=glen;
+			}
 			memcpy(rp,eq+1, bodylen);
 			rp+=bodylen;
 			u-=bodylen;
@@ -157,11 +157,6 @@ VCL_STRING search_multipart(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb 
 		namelim= memchr(name,'"',last -name);
 		if(namelim ==NULL || lim < namelim) break;
 		if(keylen == namelim - name  && !memcmp(name, key,keylen)){
-			if(rp > rpp){
-				memcpy(rp,glue,glen);
-				rp+=glen;
-				u-=glen;
-			}
 			
 			bodylen = nxt -lim -2;
 			if(u < bodylen + glen + 1){
@@ -170,6 +165,11 @@ VCL_STRING search_multipart(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb 
 				return "";
 			}
 			
+			if(rp > rpp && bodylen){
+				memcpy(rp,glue,glen);
+				rp+=glen;
+				u-=glen;
+			}
 			memcpy(rp,lim, bodylen);
 			rp+=bodylen;
 			u-=bodylen;
@@ -213,11 +213,6 @@ VCL_STRING search_urlencoded(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb
 		}
 		
 		if((pkey == porg|| (pkey-1)[0] == '&') && !memcmp(pkey, key,keylen)){
-			if(rp > rpp){
-				memcpy(rp,glue,glen);
-				rp+=glen;
-				u-=glen;
-			}
 			amp = memchr(p,'&',last -p);
 			if(amp==NULL){
 				//last
@@ -230,6 +225,11 @@ VCL_STRING search_urlencoded(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb
 				WS_Release(ctx->ws, 0);
 				WS_MarkOverflow(ctx->ws);
 				return "";
+			}
+			if(rp > rpp && bodylen){
+				memcpy(rp,glue,glen);
+				rp+=glen;
+				u-=glen;
 			}
 			
 			memcpy(rp,eq +1, bodylen);

@@ -9,6 +9,10 @@ server s1 {
        expect req.http.t1 == "abc"
        expect req.http.t2 == "1, 2"
        txresp
+       rxreq
+       expect req.http.t1 == "abc"
+       expect req.http.t2 == "1, 2"
+       txresp
 } -start
 
 varnish v1 -vcl+backend {
@@ -28,6 +32,7 @@ varnish v1 -vcl+backend {
 client c1 {
 	txreq -url "/" -req "POST" -hdr "Content-Type: application/x-www-form-urlencoded" -body "xtest=def&test=abc&xtest=&ba=3&a=1&a=2"
 	txreq -url "/" -req "POST" -hdr "Content-Type: application/x-www-form-urlencoded" -body "xtest=def&&test=abc&ba=3&a=1&a=2"
+	txreq -url "/" -req "POST" -hdr "Content-Type: application/x-www-form-urlencoded" -body "xtest===def&&test=abc&ba=3&a=1&a=2&&&==&a"
 	rxresp
 }
 
