@@ -13,8 +13,6 @@
 #include "vtim.h"
 #include "vcc_parseform_if.h"
 
-#include "vre.h"
-
 #include <syslog.h>
 
 
