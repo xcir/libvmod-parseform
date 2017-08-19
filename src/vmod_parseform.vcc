@@ -1,7 +1,9 @@
 #
-# Copyright YOU (c) 1900.
+# Copyright (c) 2017- Shohei Tanaka(@xcir)
 #
-# (vmodtool requires this format.)
+# File layout and configuration based on libvmod-example
+# Copyright (c) 2011 Varnish Software AS
+# request-body access based on libvmod-bodyaccess( https://github.com/aondio/libvmod-bodyaccess )
 #
 
 $Module parseform 3 Parseform VMOD
