@@ -2,9 +2,31 @@ varnishtest "text plain"
 
 server s1 {
        rxreq
-       expect req.http.t1 == "a, b"
-       expect req.http.t2 == ""
+       expect req.http.t1 == "1"
+       expect req.http.t2 == "123"
+       expect req.http.t3 == ""
        txresp
+       rxreq
+       expect req.http.t1 == "1, 2"
+       expect req.http.t2 == "123456, 789"
+       expect req.http.t4 == "1*******2"
+       txresp
+       rxreq
+       expect req.http.t2 == "@123@456@"
+       txresp
+       rxreq
+       expect req.http.t1 == ""
+       expect req.http.t2 == ""
+       expect req.http.t3 == ""
+       expect req.http.t4 == ""
+       txresp
+       rxreq
+       expect req.http.t1 == ""
+       expect req.http.t2 == ""
+       expect req.http.t3 == ""
+       expect req.http.t4 == ""
+       txresp
+
 } -start
 
 varnish v1 -vcl+backend {
@@ -14,15 +36,25 @@ varnish v1 -vcl+backend {
 
 	sub vcl_recv {
 		std.cache_req_body(1MB);
-		set req.http.t1 = parseform.get(key="a1");
-		set req.http.t2 = parseform.get(key="alhkfsd1");
+		set req.http.t1 = regsuball(parseform.get("a"), "\r\n", "@");
+		set req.http.t2 = regsuball(parseform.get("aa"), "\r\n", "@");
+		set req.http.t3 = regsuball(parseform.get("aaa"), "\r\n", "@");
+		set req.http.t4 = regsuball(parseform.get(key="a", glue="*******"), "\r\n", "@");
 	}
 } -start
 
 
 client c1 {
 
-	txreq -url "/" -req "POST" -hdr "Content-Type: text/plain" -body "ba1=a\r\na1=a\r\na2=b\r\nzz=a\r\nc\r\na1=b"
+	txreq -url "/" -req "POST" -hdr "Content-Type: text/plain" -body "a=1\r\naa=123"
+	rxresp
+	txreq -url "/" -req "POST" -hdr "Content-Type: text/plain" -body "a=1\r\naa=123456\r\na=2\r\naa=789\r\naaa="
+	rxresp
+	txreq -url "/" -req "POST" -hdr "Content-Type: text/plain" -body "a=1\r\naa=\r\n123\r\n456\r\n"
+	rxresp
+	txreq -url "/" -req "POST" -hdr "Content-Type: text/plain" -body ""
+	rxresp
+	txreq -url "/" -req "POST" -hdr "Content-Type: text/plain" -body "fdhljsk"
 	rxresp
 }
 
