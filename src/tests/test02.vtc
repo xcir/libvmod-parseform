@@ -2,8 +2,37 @@ varnishtest "multipart"
 
 server s1 {
        rxreq
-       expect req.http.t1 == "456, 012"
+       expect req.http.t1 == "1"
+       expect req.http.t2 == "123"
+       expect req.http.t3 == ""
+       txresp
+       rxreq
+       expect req.http.t1 == "1, 2"
+       expect req.http.t2 == "123456, 789"
+       expect req.http.t4 == "1*******2"
+       txresp
+       rxreq
+       expect req.http.t2 == "@123@456@"
+       txresp
+       rxreq
+       expect req.http.t1 == "1"
        expect req.http.t2 == ""
+       expect req.http.t3 == ""
+       txresp
+       rxreq
+       expect req.http.t1 == "1"
+       expect req.http.t2 == "2"
+       expect req.http.t3 == "3"
+       txresp
+       rxreq
+       expect req.http.t1 == "1"
+       expect req.http.t2 == "2"
+       expect req.http.t3 == ""
+       txresp
+       rxreq
+       expect req.http.t1 == "1"
+       expect req.http.t2 == "2"
+       expect req.http.t3 == "3"
        txresp
 } -start
 
@@ -14,14 +43,28 @@ varnish v1 -vcl+backend {
 
 	sub vcl_recv {
 		std.cache_req_body(1MB);
-		set req.http.t1 = parseform.get(key="cd");
-		set req.http.t2 = parseform.get(key="cdfdjsa");
+		set req.http.t1 = regsuball(parseform.get("a"), "\r\n", "@");
+		set req.http.t2 = regsuball(parseform.get("aa"), "\r\n", "@");
+		set req.http.t3 = regsuball(parseform.get("aaa"), "\r\n", "@");
+		set req.http.t4 = regsuball(parseform.get(key="a", glue="*******"), "\r\n", "@");
 	}
 } -start
 
 
 client c1 {
-	txreq -url "/" -req "POST" -hdr "Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryK8B97StehNVcCwiH" -body "------WebKitFormBoundaryK8B97StehNVcCwiH\r\nContent-Disposition: form-data; name=\"abcd\"\r\n\r\n123\r\n------WebKitFormBoundaryK8B97StehNVcCwiH\r\nContent-Disposition: form-data; name=\"ab\"\r\n\r\n123\r\n------WebKitFormBoundaryK8B97StehNVcCwiH\r\nContent-Disposition: form-data; name=\"file\"; filename=\"\"\r\nContent-Type: application/octet-stream\r\n\r\n\r\n------WebKitFormBoundaryK8B97StehNVcCwiH\r\nContent-Disposition: form-data; name=\"cd\"\r\n\r\n456\r\n------WebKitFormBoundaryK8B97StehNVcCwiH\r\nContent-Disposition: form-data; name=\"ef\"\r\n\r\n789\r\n------WebKitFormBoundaryK8B97StehNVcCwiH\r\nContent-Disposition: form-data; name=\"cd\"\r\n\r\n012\r\n------WebKitFormBoundaryK8B97StehNVcCwiH\r\nContent-Disposition: form-data; name=\"submit_btn\"\r\n\r\n&#36865;&#20449;\r\n------WebKitFormBoundaryK8B97StehNVcCwiH--"
+	txreq -url "/" -req "POST" -hdr "Content-Type: multipart/form-data; boundary=----abc" -body "------abc\r\nContent-Disposition: form-data; name=\"a\"\r\n\r\n1\r\n------abc\r\nContent-Disposition: form-data; name=\"aa\"\r\n\r\n123\r\n------abc--"
+	rxresp
+	txreq -url "/" -req "POST" -hdr "Content-Type: multipart/form-data; boundary=----abc" -body "------abc\r\nContent-Disposition: form-data; name=\"a\"\r\n\r\n1\r\n------abc\r\nContent-Disposition: form-data; name=\"aa\"\r\n\r\n123456\r\n------abc\r\nContent-Disposition: form-data; name=\"a\"\r\n\r\n2\r\n------abc\r\nContent-Disposition: form-data; name=\"aa\"\r\n\r\n789\r\n------abc\r\nContent-Disposition: form-data; name=\"aaa\"\r\n\r\n\r\n------abc--"
+	rxresp
+	txreq -url "/" -req "POST" -hdr "Content-Type: multipart/form-data; boundary=----abc" -body "------abc\r\nContent-Disposition: form-data; name=\"a\"\r\n\r\n1\r\n------abc\r\nContent-Disposition: form-data; name=\"aa\"\r\n\r\n\r\n123\r\n456\r\n\r\n------abc--\r\n\r\n"
+	rxresp
+	txreq -url "/" -req "POST" -hdr "Content-Type: multipart/form-data; boundary=----abc" -body "------abc\r\nContent-Disposition: form-data; name=\"a\"\r\n\r\n1\r\n------abc\r\nContent-Disposition: form-data; name=aa\r\n\r\n2\r\n------abc\r\nContent-Disposition: form-data; name=\"aaa\"\r\n\r\n3\r\n------abc--\r\n"
+	rxresp
+	txreq -url "/" -req "POST" -hdr "Content-Type: multipart/form-data; boundary=----abc" -body "------abc\r\nContent-Disposition: form-data; name=\"a\"\r\n\r\n1\r\n------abc\r\nContent-Disposition: form-data; name=\"aa\"\r\nhoge\r\nhoge\r\nhoge\r\n\r\n2\r\n------abc\r\nContent-Disposition: form-data; name=\"aaa\"\r\n\r\n3\r\n------abc--\r\n"
+	rxresp
+	txreq -url "/" -req "POST" -hdr "Content-Type: multipart/form-data; boundary=----abc" -body "------abc\r\nContent-Disposition: form-data; name=\"a\"\r\n\r\n1\r\n------abc\r\nContent-Disposition: form-data; name=\"aa\"\r\n\r\n2\r\n------abc\r\nContent-Disposition: form-data; name=\"aaa\"\r\n\r\n3\r\n"
+	rxresp
+	txreq -url "/" -req "POST" -hdr "Content-Type: multipart/form-data; boundary=----abc" -body "------abc\r\nContent-Disposition: form-data; name=\"a\"\r\n\r\n1\r\n------abc\r\nContent-Disposition: form-data; name=\"aa\"\r\n\r\n2\r\n------abc\r\nContent-Disposition: form-data; hoge; mage; name=\"aaa\"; hoge\r\n\r\n3\r\n------abc--\r\n"
 	rxresp
 }
 
