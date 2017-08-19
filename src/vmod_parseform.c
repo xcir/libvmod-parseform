@@ -187,36 +187,40 @@ VCL_STRING search_multipart(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb 
 
 }
 VCL_STRING search_urlencoded(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb *vsb){
-	char *pkey;
-	char *p,*porg;
-	p = porg= VSB_data(vsb);
-	char *eq,*amp;
-	ssize_t bodylen;
+	char    *pkey;
+	char    *p, *porg, *last;
+	char    *eq, *amp;
+	ssize_t bodylen, keylen;
 	ssize_t glen;
-	glen = strlen(glue);
-	char *last = porg + VSB_len(vsb);
-	ssize_t keylen   = strlen(key);
+
 	unsigned u;
-	u = WS_Reserve(ctx->ws, 0);
-	char *rpp,*rp;
-	rpp = rp = ctx->ws->f;
+	char *rpp, *rp;
+
+	p      = porg= VSB_data(vsb);
+	glen   = strlen(glue);
+	last   = porg + VSB_len(vsb);
+	keylen = strlen(key);
+	
+	u      = WS_Reserve(ctx->ws, 0);
+	rpp    = rp = ctx->ws->f;
 	
 	while(1){
-		eq = memchr(p,'=',last -p);
+		eq = memchr(p, '=', last -p);
 		if(eq == NULL) break;
-		p  = eq +1;
-		pkey = eq -keylen;
+		p  = eq + 1;
+		pkey = eq - keylen;
 		if(pkey < porg){
 			continue;
 		}
 		
-		if((pkey == porg|| (pkey-1)[0] == '&') && !memcmp(pkey, key,keylen)){
-			amp = memchr(p,'&',last -p);
-			if(amp==NULL){
+		if((pkey == porg || (pkey-1)[0] == '&') && !memcmp(pkey, key, keylen)){
+			//key match
+			amp = memchr(p, '&', last -p);
+			if(amp == NULL){
 				//last
-				bodylen =last -p;
+				bodylen = last - p;
 			}else{
-				bodylen =amp -p;
+				bodylen = amp  - p;
 			}
 			if(u < bodylen + glen + 1){
 				WS_Release(ctx->ws, 0);
@@ -224,18 +228,19 @@ VCL_STRING search_urlencoded(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb
 				return "";
 			}
 			if(rp > rpp && bodylen){
-				memcpy(rp,glue,glen);
-				rp+=glen;
-				u-=glen;
+				memcpy(rp, glue, glen);
+				rp += glen;
+				u  -= glen;
 			}
 			
 			memcpy(rp,p, bodylen);
-			rp+=bodylen;
-			u-=bodylen;
-			p+=bodylen;
+			rp += bodylen;
+			u  -= bodylen;
+			p  += bodylen;
 			
 		}
 	}
+	
 	if(rp == rpp){
 		WS_Release(ctx->ws, 0);
 		return "";
@@ -253,9 +258,6 @@ event_function(VRT_CTX, struct vmod_priv *priv, enum vcl_event_e e)
 {
 	return (0);
 }
-
-
-
 
 static void vmod_free(void *priv){
 	struct vmod_priv_parseform *tmp = priv;
@@ -292,7 +294,7 @@ vmod_get(VRT_CTX, struct vmod_priv *priv, VCL_STRING key, VCL_STRING glue)
 	
 	if(!strcmp(ctype, "application/x-www-form-urlencoded")){
 		return search_urlencoded(ctx, key, glue, ((struct vmod_priv_parseform *)priv->priv)->vsb);
-	}else if(strlen(ctype) > 19 && !memcmp(ctype, "multipart/form-data",19)){
+	}else if(strlen(ctype) > 19 && !memcmp(ctype, "multipart/form-data", 19)){
 		return search_multipart (ctx, key, glue, ((struct vmod_priv_parseform *)priv->priv)->vsb);
 	}else if(!strcmp(ctype, "text/plain")){
 		return search_plain     (ctx, key, glue, ((struct vmod_priv_parseform *)priv->priv)->vsb);

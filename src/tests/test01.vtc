@@ -2,17 +2,30 @@ varnishtest "urlencoded"
 
 server s1 {
        rxreq
-       expect req.http.t1 == "abc"
-       expect req.http.t2 == "1, 2"
+       expect req.http.t1 == ""
+       expect req.http.t2 == ""
        expect req.http.t3 == ""
        txresp
        rxreq
-       expect req.http.t1 == "abc"
-       expect req.http.t2 == "1, 2"
+       expect req.http.t1 == "1"
+       expect req.http.t2 == "123"
+       expect req.http.t3 == ""
        txresp
        rxreq
-       expect req.http.t1 == "abc"
-       expect req.http.t2 == "1, 2, 3"
+       expect req.http.t1 == "1, 2"
+       expect req.http.t2 == "123456, 789"
+       expect req.http.t3 == ""
+       txresp
+       rxreq
+       expect req.http.t1 == "1, 2====, 3"
+       expect req.http.t2 == "123"
+       expect req.http.t3 == ""
+       txresp
+       rxreq
+       expect req.http.t1 == "1, 2, 4"
+       expect req.http.t2 == ""
+       expect req.http.t3 == ""
+       expect req.http.t4 == "1*******2*******4"
        txresp
 } -start
 
@@ -23,20 +36,26 @@ varnish v1 -vcl+backend {
 
 	sub vcl_recv {
 		std.cache_req_body(1MB);
-		set req.http.t1 = parseform.get("test");
-		set req.http.t2 = parseform.get("a");
-		set req.http.t3 = parseform.get("zzz");
+		set req.http.t1 = parseform.get("a");
+		set req.http.t2 = parseform.get("aa");
+		set req.http.t3 = parseform.get("aaa");
+		set req.http.t4 = parseform.get(key="a", glue="*******");
 		return(pass);
 	}
 } -start
 
 
 client c1 {
-	txreq -url "/" -req "POST" -hdr "Content-Type: application/x-www-form-urlencoded" -body "xtest=def&test=abc&xtest=&ba=3&a=1&a=2"
-	txreq -url "/" -req "POST" -hdr "Content-Type: application/x-www-form-urlencoded" -body "xtest=def&&test=abc&ba=3&a=1&a=2"
-	txreq -url "/" -req "POST" -hdr "Content-Type: application/x-www-form-urlencoded" -body "xtest===def&&test=abc&ba=3&a=1&a=2&&&=3=&a=&a&a=&a=3&&"
+	txreq -url "/" -req "GET"
+	rxresp
+	txreq -url "/" -req "POST" -hdr "Content-Type: application/x-www-form-urlencoded" -body "a=1&aa=123"
+	rxresp
+	txreq -url "/" -req "POST" -hdr "Content-Type: application/x-www-form-urlencoded" -body "a=1&aa=123456&a=2&aa=789&aaa="
+	rxresp
+	txreq -url "/" -req "POST" -hdr "Content-Type: application/x-www-form-urlencoded" -body "a=1&&aa=123&&&&&&&a=2====&a=3"
+	rxresp
+	txreq -url "/" -req "POST" -hdr "Content-Type: application/x-www-form-urlencoded" -body "a=1&a&a&a&a=2&=3&a=4"
 	rxresp
 }
 
 client c1 -run
-
