@@ -21,7 +21,7 @@ struct vmod_priv_parseform{
 #define VMOD_PRIV_PARSEFORM_MAGIC	0xf8afce84
 	struct vsb	*vsb;
 };
-static const struct gethdr_s VGC_HDR_REQ_content_2d_type =
+static const struct gethdr_s vmod_priv_parseform_contenttype =
     { HDR_REQ, "\015content-type:"};
 
 
@@ -53,49 +53,52 @@ VRB_Blob(VRT_CTX, struct vsb *vsb)
 }
 VCL_STRING search_plain(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb *vsb){
 
-	char *st,*nxt, *eq,*lim,*nxeq;
-	st =nxt = VSB_data(vsb);
-	char *last = st+ VSB_len(vsb);
+	char    *st, *nxt, *eq, *lim, *nxeq, *last;
 	ssize_t glen,keylen,bodylen;
-	glen = strlen(glue);
-	keylen = strlen(key);
-	eq = memchr(st,'=',last-st);
+
+	unsigned u;
+	char     *rpp, *rp;
+
+	st   = nxt = VSB_data(vsb);
+	last = st+ VSB_len(vsb);
+	eq = memchr(st, '=', last -st);
 	
 	if(!eq) return "";
-	unsigned u;
+	glen   = strlen(glue);
+	keylen = strlen(key);
+	
 	u = WS_Reserve(ctx->ws, 0);
-	char *rpp,*rp;
 	rpp = rp = ctx->ws->f;
 	
 	while(1){
 		if(!eq)break;
 		
-		nxeq = memchr(eq+1,'=',last-eq-1);
+		nxeq = memchr(eq +1, '=', last -eq -1);
 		if(!nxeq){
 			lim = last;
 		}else{
-			lim = memrchr(eq,'\r',nxeq - eq);
-			if(lim[1]!='\n') break;
+			lim = memrchr(eq, '\r', nxeq- eq);
+			if(lim[1] != '\n') break;
 		}
-		if(keylen == eq -st   && !memcmp(st, key,keylen)){
-			bodylen = lim-eq-1;
-			if(u < bodylen + glen + 1){
+		if(keylen == eq -st && !memcmp(st, key, keylen)){
+			bodylen = lim -eq -1;
+			if(u < bodylen + glen +1){
 				WS_Release(ctx->ws, 0);
 				WS_MarkOverflow(ctx->ws);
 				return "";
 			}
 			
 			if(rp > rpp && bodylen){
-				memcpy(rp,glue,glen);
-				rp+=glen;
-				u-=glen;
+				memcpy(rp, glue, glen);
+				rp +=glen;
+				u  -=glen;
 			}
-			memcpy(rp,eq+1, bodylen);
-			rp+=bodylen;
-			u-=bodylen;
+			memcpy(rp, eq +1, bodylen);
+			rp +=bodylen;
+			u  -=bodylen;
 
 		}
-		st = lim+2;
+		st = lim +2;
 		eq = nxeq;
 		if(st > last)break;
 	}
@@ -107,72 +110,75 @@ VCL_STRING search_plain(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb *vsb
 	rp[0] = 0;
 	rp++;
 	u--;
-	WS_Release(ctx->ws, rp - rpp);
+	WS_Release(ctx->ws, rp -rpp);
 	return rpp;
 }
-VCL_STRING search_multipart(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb *vsb){
-	char *st,*nxt;
-	char *lim,*name,*namelim;
 
-	st = nxt = VSB_data(vsb);
-	char *last = st + VSB_len(vsb);
-	const char *tmp= VRT_GetHdr(ctx, &VGC_HDR_REQ_content_2d_type);
-	char *raw_boundary = memmem(tmp,last -tmp,"; boundary=",11);
+VCL_STRING search_multipart(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb *vsb){
+	char       *st, *nxt, *last;
+	char       *lim, *name, *namelim;
+	char       *raw_boundary, *boundary;
+	const char *tmp;
+	ssize_t    boundary_len, keylen, bodylen, glen;
+	
+	unsigned u;
+	char     *rpp, *rp;
+
+	st   = nxt = VSB_data(vsb);
+	last = st +VSB_len(vsb);
+	tmp  = VRT_GetHdr(ctx, &vmod_priv_parseform_contenttype);
+	raw_boundary = memmem(tmp, last - tmp, "; boundary=", 11);
 	if(!raw_boundary) return "";
-	raw_boundary+=11;
+	raw_boundary += 11;
 	
 
-	char *boundary    = WS_Alloc(ctx->ws, strlen(raw_boundary)+3);
+	boundary     = WS_Alloc(ctx->ws, strlen(raw_boundary) +3);
 	boundary[0]  = '-';
 	boundary[1]  = '-';
-	memcpy(boundary+2,raw_boundary,strlen(raw_boundary));
-	boundary[strlen(raw_boundary)+2] = 0;
+	memcpy(boundary + 2, raw_boundary, strlen(raw_boundary));
+	boundary[strlen(raw_boundary) +2] = 0;
 	
-	ssize_t boundary_len = strlen(boundary);
-	st = memmem(nxt,last-nxt, boundary,boundary_len) + boundary_len;
-	if(!st) return"";
-	ssize_t keylen   = strlen(key);
-	ssize_t bodylen,glen;
-	glen = strlen(glue);
+	boundary_len = strlen(boundary);
+	st = memmem(nxt, last-nxt, boundary, boundary_len) + boundary_len;
+	if(!st) return "";
+	keylen = strlen(key);
+	glen   = strlen(glue);
 
-	unsigned u;
-	u = WS_Reserve(ctx->ws, 0);
-	char *rpp,*rp;
+	u   = WS_Reserve(ctx->ws, 0);
 	rpp = rp = ctx->ws->f;
 
-	
 	while(1){
-		nxt = memmem(st,last-st, boundary,boundary_len);
+		nxt = memmem(st, last - st, boundary, boundary_len);
 		if(!nxt) break;
 		
 		if(st[0]!='\r' || st[1] != '\n') break;
-		st+=2;
-		lim = memmem(st,last-st,"\r\n\r\n",4);
-		name= memmem(st,last-st," name=\"",7);
-		if(name ==NULL || lim==NULL || lim < name) break;
-		name+=7;
-		lim +=4;
-		namelim= memchr(name,'"',last -name);
-		if(namelim ==NULL || lim < namelim) break;
-		if(keylen == namelim - name  && !memcmp(name, key,keylen)){
+		st +=2;
+		lim  = memmem(st, last-st, "\r\n\r\n", 4);
+		name = memmem(st, last-st, " name=\"", 7);
+		if(name == NULL || lim == NULL || lim < name) break;
+		name +=7;
+		lim  +=4;
+		namelim = memchr(name, '"', last - name);
+		if(namelim == NULL || lim < namelim) break;
+		if(keylen == namelim - name  && !memcmp(name, key, keylen)){
 			
 			bodylen = nxt -lim -2;
-			if(u < bodylen + glen + 1){
+			if(u < bodylen +glen +1){
 				WS_Release(ctx->ws, 0);
 				WS_MarkOverflow(ctx->ws);
 				return "";
 			}
 			
 			if(rp > rpp && bodylen){
-				memcpy(rp,glue,glen);
-				rp+=glen;
-				u-=glen;
+				memcpy(rp, glue, glen);
+				rp +=glen;
+				u  -=glen;
 			}
-			memcpy(rp,lim, bodylen);
-			rp+=bodylen;
-			u-=bodylen;
+			memcpy(rp, lim, bodylen);
+			rp +=bodylen;
+			u  -=bodylen;
 		}
-		st = nxt + boundary_len;
+		st = nxt +boundary_len;
 	}
 
 	if(rp == rpp){
@@ -182,7 +188,7 @@ VCL_STRING search_multipart(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb 
 	rp[0] = 0;
 	rp++;
 	u--;
-	WS_Release(ctx->ws, rp - rpp);
+	WS_Release(ctx->ws, rp -rpp);
 	return rpp;
 
 }
@@ -213,7 +219,7 @@ VCL_STRING search_urlencoded(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb
 			continue;
 		}
 		
-		if((pkey == porg || (pkey-1)[0] == '&') && !memcmp(pkey, key, keylen)){
+		if((pkey == porg || (pkey -1)[0] == '&') && !memcmp(pkey, key, keylen)){
 			//key match
 			amp = memchr(p, '&', last -p);
 			if(amp == NULL){
@@ -222,7 +228,7 @@ VCL_STRING search_urlencoded(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb
 			}else{
 				bodylen = amp  - p;
 			}
-			if(u < bodylen + glen + 1){
+			if(u < bodylen + glen +1){
 				WS_Release(ctx->ws, 0);
 				WS_MarkOverflow(ctx->ws);
 				return "";
@@ -290,7 +296,7 @@ vmod_get(VRT_CTX, struct vmod_priv *priv, VCL_STRING key, VCL_STRING glue)
 	
 	if (priv->priv == NULL) getbody(ctx, &priv);
 	
-	const char *ctype= VRT_GetHdr(ctx, &VGC_HDR_REQ_content_2d_type);
+	const char *ctype= VRT_GetHdr(ctx, &vmod_priv_parseform_contenttype);
 	
 	if(!strcmp(ctype, "application/x-www-form-urlencoded")){
 		return search_urlencoded(ctx, key, glue, ((struct vmod_priv_parseform *)priv->priv)->vsb);
