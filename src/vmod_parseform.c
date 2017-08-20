@@ -51,7 +51,7 @@ VRB_Blob(VRT_CTX, struct vsb *vsb)
 		return;
 	}
 }
-VCL_STRING search_plain(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb *vsb){
+VCL_STRING search_plain(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb *vsb, ssize_t* length){
 
 	char    *st, *nxt, *eq, *lim, *nxeq, *last;
 	ssize_t glen,keylen,bodylen;
@@ -62,7 +62,8 @@ VCL_STRING search_plain(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb *vsb
 	st   = nxt = VSB_data(vsb);
 	last = st+ VSB_len(vsb);
 	eq = memchr(st, '=', last -st);
-	
+
+	*length = 0;
 	if(!eq) return "";
 	glen   = strlen(glue);
 	keylen = strlen(key);
@@ -110,11 +111,12 @@ VCL_STRING search_plain(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb *vsb
 	rp[0] = 0;
 	rp++;
 	u--;
+	*length=rp -rpp -1;
 	WS_Release(ctx->ws, rp -rpp);
 	return rpp;
 }
 
-VCL_STRING search_multipart(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb *vsb){
+VCL_STRING search_multipart(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb *vsb, ssize_t* length){
 	char       *st, *nxt, *last;
 	char       *lim, *name, *namelim;
 	char       *raw_boundary, *boundary;
@@ -126,6 +128,9 @@ VCL_STRING search_multipart(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb 
 
 	st   = nxt = VSB_data(vsb);
 	last = st +VSB_len(vsb);
+
+	*length = 0;
+
 	tmp  = VRT_GetHdr(ctx, &vmod_priv_parseform_contenttype);
 	raw_boundary = memmem(tmp, last - tmp, "; boundary=", 11);
 	if(!raw_boundary) return "";
@@ -188,11 +193,12 @@ VCL_STRING search_multipart(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb 
 	rp[0] = 0;
 	rp++;
 	u--;
+	*length=rp -rpp -1;
 	WS_Release(ctx->ws, rp -rpp);
 	return rpp;
 
 }
-VCL_STRING search_urlencoded(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb *vsb){
+VCL_STRING search_urlencoded(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb *vsb, ssize_t* length){
 	char    *pkey;
 	char    *p, *porg, *last;
 	char    *eq, *amp;
@@ -209,6 +215,8 @@ VCL_STRING search_urlencoded(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb
 	
 	u      = WS_Reserve(ctx->ws, 0);
 	rpp    = rp = ctx->ws->f;
+	
+	*length = 0;
 	
 	while(1){
 		eq = memchr(p, '=', last -p);
@@ -254,6 +262,7 @@ VCL_STRING search_urlencoded(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb
 	rp[0] = 0;
 	rp++;
 	u--;
+	*length=rp -rpp -1;
 	WS_Release(ctx->ws, rp - rpp);
 	return rpp;
 }
@@ -297,14 +306,42 @@ vmod_get(VRT_CTX, struct vmod_priv *priv, VCL_STRING key, VCL_STRING glue)
 	if (priv->priv == NULL) getbody(ctx, &priv);
 	
 	const char *ctype= VRT_GetHdr(ctx, &vmod_priv_parseform_contenttype);
-	
+	ssize_t length =0;
 	if(!strcmp(ctype, "application/x-www-form-urlencoded")){
-		return search_urlencoded(ctx, key, glue, ((struct vmod_priv_parseform *)priv->priv)->vsb);
+		return search_urlencoded(ctx, key, glue, ((struct vmod_priv_parseform *)priv->priv)->vsb, &length);
 	}else if(strlen(ctype) > 19 && !memcmp(ctype, "multipart/form-data", 19)){
-		return search_multipart (ctx, key, glue, ((struct vmod_priv_parseform *)priv->priv)->vsb);
+		return search_multipart (ctx, key, glue, ((struct vmod_priv_parseform *)priv->priv)->vsb, &length);
 	}else if(!strcmp(ctype, "text/plain")){
-		return search_plain     (ctx, key, glue, ((struct vmod_priv_parseform *)priv->priv)->vsb);
+		return search_plain     (ctx, key, glue, ((struct vmod_priv_parseform *)priv->priv)->vsb, &length);
 	}
 	return "";
+}
+
+VCL_INT 
+vmod_len(VRT_CTX, struct vmod_priv *priv, VCL_STRING key, VCL_STRING glue)
+{
+	if (ctx->req->req_body_status != REQ_BODY_CACHED) {
+		VSLb(ctx->vsl, SLT_VCL_Error,
+		   "Unbuffered req.body");
+		return 0;
+	}
+	if (ctx->method != VCL_MET_RECV) {
+		VSLb(ctx->vsl, SLT_VCL_Error,
+		    "len_req_body can only be used in vcl_recv{}");
+		return 0;
+	}
+	
+	if (priv->priv == NULL) getbody(ctx, &priv);
+	
+	const char *ctype= VRT_GetHdr(ctx, &vmod_priv_parseform_contenttype);
+	ssize_t length =0;
+	if(!strcmp(ctype, "application/x-www-form-urlencoded")){
+		search_urlencoded(ctx, key, glue, ((struct vmod_priv_parseform *)priv->priv)->vsb, &length);
+	}else if(strlen(ctype) > 19 && !memcmp(ctype, "multipart/form-data", 19)){
+		search_multipart (ctx, key, glue, ((struct vmod_priv_parseform *)priv->priv)->vsb, &length);
+	}else if(!strcmp(ctype, "text/plain")){
+		search_plain     (ctx, key, glue, ((struct vmod_priv_parseform *)priv->priv)->vsb, &length);
+	}
+	return length;
 }
 
