@@ -22,14 +22,12 @@ import parseform;
 DESCRIPTION
 ===========
 
-Parseform Varnish vmod demonstrating how to write an out-of-tree Varnish vmod.
-
-Implements the traditional Hello World as a vmod.
+Get POST value
 
 FUNCTIONS
 =========
 
-hello
+get
 -----
 
 Prototype
@@ -44,7 +42,9 @@ Description
 	Only used in vcl_recv.
 	Need to call std.cache_req_body before using this.
 	Support content-type is "application/x-www-form-urlencoded" and "multipart/form-data" and "text/plain".
-Parseform
+Attention
+	This function does not care for binary.
+Example
         ::
 
                 import std;
@@ -105,18 +105,6 @@ Installation directories
 By default, the vmod ``configure`` script installs the built vmod in the
 directory relevant to the prefix. The vmod installation directory can be
 overridden by passing the ``vmoddir`` variable to ``make install``.
-
-USAGE
-=====
-
-In your VCL you could then use this vmod along the following lines::
-
-        import parseform;
-
-        sub vcl_deliver {
-                # This sets resp.http.hello to "Hello, World"
-                set resp.http.hello = parseform.hello("World");
-        }
 
 COMMON PROBLEMS
 ===============

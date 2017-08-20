@@ -11,16 +11,8 @@ $Module parseform 3 Parseform VMOD
 DESCRIPTION
 ===========
 
-This is the embedded documentation for the parseform VMOD. It should
-mention what the vmod is intended to do.
+Get POST value
 
-It can span multiple lines and is written in RST format.
-You can even have links and lists in here:
-
-* https://github.com/varnish/libvmod-parseform/
-* https://www.varnish-cache.org/
-
-The init-function declared next does not have documentation.
 
 $Event event_function
 
@@ -29,4 +21,30 @@ event functions.
 
 $Function STRING get(PRIV_TASK, STRING key, STRING glue=", ")
 
+Prototype
+        ::
+
+                get(STRING key, STRING glue=", ")
+Return value
+	STRING
+Description
+	Get POST value.
+	If POST have multiple-key, join with glue.
+	Only used in vcl_recv.
+	Need to call std.cache_req_body before using this.
+	Support content-type is "application/x-www-form-urlencoded" and "multipart/form-data" and "text/plain".
+Attention
+	This function does not care for binary.
+Example
+        ::
+
+                import std;
+                import parseform;
+                sub vcl_recv{
+                    
+                    std.cache_req_body(1MB);
+                    if(parseform.get("postkey")){
+                        ...
+                    }
+                }
 
