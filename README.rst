@@ -1,3 +1,8 @@
+.. image:: https://travis-ci.org/xcir/libvmod-parseform.svg?branch=master
+    :target: https://travis-ci.org/xcir/libvmod-parseform
+.. image:: https://scan.coverity.com/projects/13538/badge.svg
+    :target: https://scan.coverity.com/projects/xcir-libvmod-parseform
+
 ===============
 vmod-parseform
 ===============
