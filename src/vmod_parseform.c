@@ -17,9 +17,9 @@
 
 
 static struct surlenc {
-	char chkenc[256];  //char -> bin
-	char bin2hex[16];  //char -> bin
-	char skipchr[256];  //char -> bin
+	char chkenc[256];
+	char bin2hex[16];
+	char skipchr[256];
 } urlenc;
 
 static void initUrlcode(){
