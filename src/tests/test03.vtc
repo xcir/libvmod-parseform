@@ -19,6 +19,7 @@ server s1 {
        txresp
        rxreq
        expect req.http.t2 == "@123@456@"
+       expect req.http.t5 == "%0D%0A123%0D%0A456%0D%0A"
        expect req.http.l2 == "12"
        txresp
        rxreq
@@ -53,6 +54,7 @@ varnish v1 -vcl+backend {
 		set req.http.t2 = regsuball(parseform.get("aa"), "\r\n", "@");
 		set req.http.t3 = regsuball(parseform.get("aaa"), "\r\n", "@");
 		set req.http.t4 = regsuball(parseform.get(key="a", glue="*******"), "\r\n", "@");
+		set req.http.t5 = parseform.get(key="aa", encode=urlencode);
 		set req.http.l1 = parseform.len("a");
 		set req.http.l2 = parseform.len("aa");
 		set req.http.l3 = parseform.len("aaa");

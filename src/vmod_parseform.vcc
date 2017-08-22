@@ -19,7 +19,7 @@ $Event event_function
 Returns a string set by the last VCL event, demonstrating the use of
 event functions.
 
-$Function STRING get(PRIV_TASK, STRING key, STRING glue=", ")
+$Function STRING get(PRIV_TASK, STRING key, STRING glue=", ", ENUM { raw, urlencode } encode="raw")
 
 Prototype
         ::
@@ -76,3 +76,6 @@ Example
                     }
                 }
 
+
+$Function STRING urlencode(STRING txt)
+$Function STRING urldecode(STRING txt)

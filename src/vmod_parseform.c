@@ -16,6 +16,31 @@
 #include <syslog.h>
 
 
+static struct surlenc {
+	char chkenc[256];  //char -> bin
+	char bin2hex[16];  //char -> bin
+	char skipchr[256];  //char -> bin
+} urlenc;
+
+static void initUrlcode(){
+	const char *p;
+	char *hex = "0123456789abcdefABCDEF";
+	char *bin2hex = "0123456789ABCDEF";
+	char *skip= "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+	int i;
+	memset(urlenc.chkenc,  0, 256);
+	memset(urlenc.skipchr, 0, 256);
+
+	for (i=0; i< 16;i++)
+		urlenc.bin2hex[i] = bin2hex[i];
+
+	for (p = hex; *p; p++)
+		urlenc.chkenc[(int)*p] = 1;
+	for (p = skip; *p; p++)
+		urlenc.skipchr[(int)*p] = 1;
+
+}
+
 struct vmod_priv_parseform{
 	unsigned	magic;
 #define VMOD_PRIV_PARSEFORM_MAGIC	0xf8afce84
@@ -24,6 +49,123 @@ struct vmod_priv_parseform{
 static const struct gethdr_s vmod_priv_parseform_contenttype =
     { HDR_REQ, "\015content-type:"};
 
+
+VCL_STRING urlencode(VRT_CTX, VCL_STRING txt, ssize_t inlen){
+	unsigned u;
+	char     *rpp, *rp;
+	const char *p;
+	u = WS_Reserve(ctx->ws, 0);
+	rpp = rp = ctx->ws->f;
+
+	for (p = txt; p < txt +inlen; p++){
+		if(u < 4){
+			WS_Release(ctx->ws, 0);
+			WS_MarkOverflow(ctx->ws);
+			return "";
+		}
+		if(urlenc.skipchr[(int)p[0]]){
+			rp[0] = p[0];
+			rp++;
+			u--;
+		}else{
+			rp[0] = '%';
+			rp[1] = urlenc.bin2hex[p[0] >>4];
+			rp[2] = urlenc.bin2hex[p[0] & 0x0f];
+			rp+=3;
+			u -=3;
+		}
+	}
+	if(rp == rpp){
+		WS_Release(ctx->ws, 0);
+		return "";
+	}
+	rp[0] = 0;
+	rp++;
+	u--;
+
+	WS_Release(ctx->ws, rp - rpp);
+	return rpp;
+}
+
+VCL_STRING urldecode(VRT_CTX, VCL_STRING txt, ssize_t *outlen){
+	const char *last, *per, *nxtper;
+	unsigned   u;
+	char       *rpp, *rp, *plus;
+	char       tmp;
+	int        i;
+	
+	u = WS_Reserve(ctx->ws, 0);
+	rpp = rp = ctx->ws->f;
+	last = txt + strlen(txt);
+	ssize_t bodylen;
+	per = txt;
+	while(1){
+		nxtper = strchr(per, '%');
+		if(!nxtper) break;
+		if(nxtper + 2 > last) break;
+		if(u < 4){
+			WS_Release(ctx->ws, 0);
+			WS_MarkOverflow(ctx->ws);
+			return "";
+		}
+		if(nxtper != per){
+			bodylen = nxtper - per;
+			if(u < bodylen +1){
+				WS_Release(ctx->ws, 0);
+				WS_MarkOverflow(ctx->ws);
+				return "";
+			}
+			memcpy(rp, per, bodylen);
+			rp +=bodylen;
+			u  -=bodylen;
+		}
+		if(urlenc.chkenc[(int)nxtper[1]] && urlenc.chkenc[(int)nxtper[2]]){
+			tmp =0;
+			for(i=1; i<=2; i++){
+				if      (nxtper[i] >= '0' && nxtper[i] <= '9'){
+					tmp |=(nxtper[i] - '0') << (8 -i *4);
+				}else if(nxtper[i] >= 'A' && nxtper[i] <= 'F'){
+					tmp |=(nxtper[i] - 'A' +10) << (8 -i *4);
+				}else{
+					tmp |=(nxtper[i] - 'a' +10) << (8 -i *4);
+				}
+			}
+			rp[0] = tmp;
+			rp ++;
+			u  --;
+			nxtper+=3;
+		}else{
+			rp[0] = '%';
+			rp ++;
+			u  --;
+			nxtper++;
+		}
+		per = nxtper;
+	}
+
+	if(last > per){
+		bodylen = last -per;
+		memcpy(rp, per, bodylen);
+		rp +=bodylen;
+		u  -=bodylen;
+	}
+
+	rp[0] = 0;
+	rp++;
+	u--;
+	*outlen=rp -rpp -1;
+
+	plus = rpp;
+	while(1){
+		plus = strchr(plus, '+');
+		if(!plus) break;
+		plus[0] = ' ';
+	}
+	
+	
+	WS_Release(ctx->ws, rp - rpp);
+	return rpp;
+}
 
 
 static int __match_proto__(objiterate_f)
@@ -51,7 +193,7 @@ VRB_Blob(VRT_CTX, struct vsb *vsb)
 		return;
 	}
 }
-VCL_STRING search_plain(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb *vsb, ssize_t* length){
+VCL_STRING search_plain(VRT_CTX, VCL_STRING key, VCL_STRING glue, struct vsb *vsb, ssize_t* length){
 
 	char    *st, *nxt, *eq, *lim, *nxeq, *last;
 	ssize_t glen,keylen,bodylen;
@@ -271,6 +413,14 @@ VCL_STRING search_urlencoded(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb
 int __match_proto__(vmod_event_f)
 event_function(VRT_CTX, struct vmod_priv *priv, enum vcl_event_e e)
 {
+	switch (e) {
+	case VCL_EVENT_LOAD:
+		initUrlcode();
+		break;
+	default:
+		break;
+	}
+
 	return (0);
 }
 
@@ -289,9 +439,15 @@ void getbody(VRT_CTX, struct vmod_priv **priv){
 	VRB_Blob(ctx, tmp->vsb);
 }
 
-VCL_STRING 
-vmod_get(VRT_CTX, struct vmod_priv *priv, VCL_STRING key, VCL_STRING glue)
+VCL_STRING
+vmod_get(VRT_CTX, struct vmod_priv *priv, VCL_STRING key, VCL_STRING glue, VCL_ENUM encode)
 {
+	int enc = 0;
+	if(!strcmp(encode, "urlencode")){
+		enc = 1;
+	}
+
+
 	if (ctx->req->req_body_status != REQ_BODY_CACHED) {
 		VSLb(ctx->vsl, SLT_VCL_Error,
 		   "Unbuffered req.body");
@@ -307,17 +463,27 @@ vmod_get(VRT_CTX, struct vmod_priv *priv, VCL_STRING key, VCL_STRING glue)
 	
 	const char *ctype= VRT_GetHdr(ctx, &vmod_priv_parseform_contenttype);
 	ssize_t length =0;
+	const char *ret = NULL;
 	if(!strcmp(ctype, "application/x-www-form-urlencoded")){
-		return search_urlencoded(ctx, key, glue, ((struct vmod_priv_parseform *)priv->priv)->vsb, &length);
+		ret = search_urlencoded(ctx, key, glue, ((struct vmod_priv_parseform *)priv->priv)->vsb, &length);
+		if(enc){
+			ret = urldecode(ctx, ret, &length);
+		}
 	}else if(strlen(ctype) > 19 && !memcmp(ctype, "multipart/form-data", 19)){
-		return search_multipart (ctx, key, glue, ((struct vmod_priv_parseform *)priv->priv)->vsb, &length);
+		ret = search_multipart (ctx, key, glue, ((struct vmod_priv_parseform *)priv->priv)->vsb, &length);
 	}else if(!strcmp(ctype, "text/plain")){
-		return search_plain     (ctx, key, glue, ((struct vmod_priv_parseform *)priv->priv)->vsb, &length);
+		ret = search_plain     (ctx, key, glue, ((struct vmod_priv_parseform *)priv->priv)->vsb, &length);
+	}
+	if(ret){
+		if(enc){
+			ret = urlencode(ctx, ret, length);
+		}
+		return ret;
 	}
 	return "";
 }
 
-VCL_INT 
+VCL_INT
 vmod_len(VRT_CTX, struct vmod_priv *priv, VCL_STRING key, VCL_STRING glue)
 {
 	if (ctx->req->req_body_status != REQ_BODY_CACHED) {
@@ -345,3 +511,12 @@ vmod_len(VRT_CTX, struct vmod_priv *priv, VCL_STRING key, VCL_STRING glue)
 	return length;
 }
 
+VCL_STRING
+vmod_urldecode(VRT_CTX, VCL_STRING txt){
+	ssize_t len;
+	return(urldecode(ctx,txt,&len));
+}
+VCL_STRING
+vmod_urlencode(VRT_CTX, VCL_STRING txt){
+	return(urlencode(ctx,txt,strlen(txt)));
+}
