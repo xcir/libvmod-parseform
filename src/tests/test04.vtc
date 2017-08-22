@@ -1,0 +1,36 @@
+varnishtest "text plain"
+
+server s1 {
+       rxreq
+       expect req.http.e1 == "abc%20"
+       expect req.http.e2 == "%21%23%24%25%26%27%28%29%2A%2B%2C%2D%2E%2F0123456789%3A%3B%3C%3D%3E%3F%40ABCDEFGHIJKLMNOPQRSTUVWXYZ%5B%5C%5C%5D%5E%5F%60abcdefghijklmnopqrstuvwxyz%7B%7C%7D%7E"
+       expect req.http.d1 == "%a %b %%%"
+       expect req.http.d2 == "@@"
+       txresp
+
+} -start
+
+varnish v1 -vcl+backend {
+	import std;
+	import ${vmod_parseform};
+
+
+	sub vcl_recv {
+		std.cache_req_body(1MB);
+		set req.http.e1 = parseform.urlencode("abc ");
+		set req.http.e2 = parseform.urlencode("!#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~");
+		set req.http.d1 = parseform.urldecode("%a+%b%20%%%");
+		set req.http.d2 = regsuball(parseform.urldecode("%0D%0A%0d%0a"), "\r\n", "@");
+		
+	}
+} -start
+
+
+client c1 {
+
+	txreq -url "/"
+	rxresp
+}
+
+client c1 -run
+

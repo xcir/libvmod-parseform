@@ -33,7 +33,7 @@ get
 Prototype
         ::
 
-                get(STRING key, STRING glue=", ")
+                get(STRING key, STRING glue=", ", ENUM { raw, urlencode } encode="raw")
 Return value
 	STRING
 Description
@@ -43,7 +43,8 @@ Description
 	Need to call std.cache_req_body before using this.
 	Support content-type is "application/x-www-form-urlencoded" and "multipart/form-data" and "text/plain".
 Attention
-	This function does not care for binary.
+	Does not care for binary, if set encode=raw.
+	Output by percent encode, if set encode=urlencoded.
 Example
         ::
 
@@ -56,6 +57,7 @@ Example
                         ...
                     }
                 }
+
 
 len
 -----
@@ -84,6 +86,59 @@ Example
                         ...
                     }
                 }
+
+
+urlencode
+----------
+
+Prototype
+        ::
+
+                urlencode(STRING txt)
+Return value
+	STRING
+Description
+	Encoding to Percent encode
+Example
+        ::
+
+                import std;
+                import parseform;
+                sub vcl_recv{
+                    
+                    std.cache_req_body(1MB);
+                    if(parseform.urlencode("foo.bar.~-_baz") == parseform.get(key="postkey", encode=urlencoded)){
+                        ...
+                    }
+                }
+
+urldecode
+----------
+
+Prototype
+        ::
+
+                urldecode(STRING txt)
+Return value
+	STRING
+Description
+	Decoding to Percent encode
+Example
+        ::
+
+                import std;
+                import parseform;
+                sub vcl_recv{
+                    
+                    std.cache_req_body(1MB);
+                    if(req.http.content-type == "application/x-www-form-urlencoded"){
+                      if("foo bar" == parseform.urldecode(parseform.get("postkey"))){
+                          ...
+                      }
+                    
+                    }
+                }
+
 
 INSTALLATION
 ============
