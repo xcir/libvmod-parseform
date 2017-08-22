@@ -13,8 +13,14 @@
 #include "vtim.h"
 #include "vcc_parseform_if.h"
 
-#include <syslog.h>
+struct vmod_priv_parseform{
+	unsigned	magic;
+#define VMOD_PRIV_PARSEFORM_MAGIC	0xf8afce84
+	struct vsb	*vsb;
+};
 
+static const struct gethdr_s vmod_priv_parseform_contenttype =
+    { HDR_REQ, "\015content-type:"};
 
 static struct surlenc {
 	char chkenc[256];
@@ -24,14 +30,15 @@ static struct surlenc {
 
 static void initUrlcode(){
 	const char *p;
-	char *hex = "0123456789abcdefABCDEF";
+	char *hex     = "0123456789abcdefABCDEF";
 	char *bin2hex = "0123456789ABCDEF";
-	char *skip= "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+	char *skip    = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 	int i;
+	
 	memset(urlenc.chkenc,  0, 256);
 	memset(urlenc.skipchr, 0, 256);
 
-	for (i=0; i< 16;i++)
+	for (i=0; i< 16; i++)
 		urlenc.bin2hex[i] = bin2hex[i];
 
 	for (p = hex; *p; p++)
@@ -41,18 +48,10 @@ static void initUrlcode(){
 
 }
 
-struct vmod_priv_parseform{
-	unsigned	magic;
-#define VMOD_PRIV_PARSEFORM_MAGIC	0xf8afce84
-	struct vsb	*vsb;
-};
-static const struct gethdr_s vmod_priv_parseform_contenttype =
-    { HDR_REQ, "\015content-type:"};
-
 
 VCL_STRING urlencode(VRT_CTX, VCL_STRING txt, ssize_t inlen){
-	unsigned u;
-	char     *rpp, *rp;
+	unsigned   u;
+	char       *rpp, *rp;
 	const char *p;
 	u = WS_Reserve(ctx->ws, 0);
 	rpp = rp = ctx->ws->f;
@@ -193,6 +192,7 @@ VRB_Blob(VRT_CTX, struct vsb *vsb)
 		return;
 	}
 }
+
 VCL_STRING search_plain(VRT_CTX, VCL_STRING key, VCL_STRING glue, struct vsb *vsb, ssize_t* length){
 
 	char    *st, *nxt, *eq, *lim, *nxeq, *last;
@@ -340,6 +340,7 @@ VCL_STRING search_multipart(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb 
 	return rpp;
 
 }
+
 VCL_STRING search_urlencoded(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb *vsb, ssize_t* length){
 	char    *pkey;
 	char    *p, *porg, *last;
@@ -516,6 +517,7 @@ vmod_urldecode(VRT_CTX, VCL_STRING txt){
 	ssize_t len;
 	return(urldecode(ctx,txt,&len));
 }
+
 VCL_STRING
 vmod_urlencode(VRT_CTX, VCL_STRING txt){
 	return(urlencode(ctx,txt,strlen(txt)));
