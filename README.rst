@@ -63,6 +63,23 @@ Example
                     }
                 }
 
+get_blob
+--------
+
+Prototype
+        ::
+
+                get_blob(STRING key, STRING glue=", ", BOOL decode=false)
+Return value
+	BLOB
+Description
+	Get POST value.
+	If POST have multiple-key, join with glue.
+	Only used in vcl_recv.
+	Need to call std.cache_req_body before using this.
+	Support content-type is "application/x-www-form-urlencoded" and "multipart/form-data" and "text/plain".
+	Decode the value, if decode is true and content-type is "application/x-www-form-urlencoded".
+
 
 len
 -----
@@ -144,6 +161,25 @@ Example
                     }
                 }
 
+urlencode_blob
+---------------
+
+Prototype
+        ::
+
+                urlencode_blob(BLOB blob)
+Return value
+	STRING
+
+urldecode_blob
+---------------
+
+Prototype
+        ::
+
+                urldecode_blob(STRING txt)
+Return value
+	BLOB
 
 INSTALLATION
 ============
