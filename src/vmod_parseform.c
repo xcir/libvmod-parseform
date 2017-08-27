@@ -12,7 +12,6 @@
 
 #include "vtim.h"
 #include "vcc_parseform_if.h"
-
 struct vmod_priv_parseform{
 	unsigned	magic;
 #define VMOD_PRIV_PARSEFORM_MAGIC	0xf8afce84
@@ -23,7 +22,7 @@ static const struct gethdr_s vmod_priv_parseform_contenttype =
     { HDR_REQ, "\015content-type:"};
 
 static struct surlenc {
-	char chkenc[256];
+	char hex2bin[256];
 	char bin2hex[16];
 	char skipchr[256];
 } urlenc;
@@ -35,14 +34,21 @@ static void initUrlcode(){
 	char *skip    = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 	int i;
 	
-	memset(urlenc.chkenc,  0, 256);
+	memset(urlenc.hex2bin, -1, 256);
 	memset(urlenc.skipchr, 0, 256);
 
 	for (i=0; i< 16; i++)
 		urlenc.bin2hex[i] = bin2hex[i];
 
-	for (p = hex; *p; p++)
-		urlenc.chkenc[(int)*p] = 1;
+	for (p = hex; *p; p++){
+		if(p[0] >= '0' && p[0] <= '9'){
+			urlenc.hex2bin[(int)*p] = p[0] - '0';
+		}else if(p[0] >= 'A' && p[0] <= 'F'){
+			urlenc.hex2bin[(int)*p] = p[0] - 'A' +10;
+		}else{
+			urlenc.hex2bin[(int)*p] = p[0] - 'a' +10;
+		}
+	}
 	for (p = skip; *p; p++)
 		urlenc.skipchr[(int)*p] = 1;
 
@@ -123,16 +129,10 @@ VCL_BLOB urldecode(VRT_CTX, VCL_STRING txt){
 			rp +=bodylen;
 			u  -=bodylen;
 		}
-		if(urlenc.chkenc[(int)nxtper[1]] && urlenc.chkenc[(int)nxtper[2]]){
+		if(urlenc.hex2bin[(int)nxtper[1]] >= 0 && urlenc.hex2bin[(int)nxtper[2]] >= 0){
 			tmp =0;
 			for(i=1; i<=2; i++){
-				if      (nxtper[i] >= '0' && nxtper[i] <= '9'){
-					tmp |=(nxtper[i] - '0') << (8 -i *4);
-				}else if(nxtper[i] >= 'A' && nxtper[i] <= 'F'){
-					tmp |=(nxtper[i] - 'A' +10) << (8 -i *4);
-				}else{
-					tmp |=(nxtper[i] - 'a' +10) << (8 -i *4);
-				}
+				tmp |=urlenc.hex2bin[(int)nxtper[i]] << (8 -i *4);
 			}
 			rp[0] = tmp;
 			rp ++;
