@@ -97,8 +97,6 @@ VCL_BLOB urldecode(VRT_CTX, VCL_STRING txt){
 	const char *last, *per, *nxtper;
 	unsigned   u;
 	char       *rpp, *rp, *plus;
-	char       tmp;
-	int        i;
 	struct vmod_priv *p;
 	p = (void*)WS_Alloc(ctx->ws, sizeof *p);
 	AN(p);
@@ -130,11 +128,7 @@ VCL_BLOB urldecode(VRT_CTX, VCL_STRING txt){
 			u  -=bodylen;
 		}
 		if(urlenc.hex2bin[(int)nxtper[1]] >= 0 && urlenc.hex2bin[(int)nxtper[2]] >= 0){
-			tmp =0;
-			for(i=1; i<=2; i++){
-				tmp |=urlenc.hex2bin[(int)nxtper[i]] << (8 -i *4);
-			}
-			rp[0] = tmp;
+			rp[0] = (urlenc.hex2bin[(int)nxtper[1]] << 4) | urlenc.hex2bin[(int)nxtper[2]];
 			rp ++;
 			u  --;
 			nxtper+=3;
