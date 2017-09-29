@@ -167,8 +167,8 @@ VCL_BLOB urldecode(VRT_CTX, VCL_STRING txt){
 }
 
 
-static int __match_proto__(objiterate_f)
-IterCopyReqBody(void *priv, int flush, const void *ptr, ssize_t len)
+static int __match_proto__(req_body_iter_f)
+IterCopyReqBody(struct req *req, void *priv, void *ptr, size_t len)
 {
 	struct vsb *iter_vsb = priv;
 
