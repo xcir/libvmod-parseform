@@ -15,7 +15,7 @@ Parse to POST request
 :Author: Shohei Tanaka(@xcir)
 :Date: 2017-08-26
 :Version: 51.2
-:Support Varnish Version: 4.1.x
+:Support Varnish Version: 5.1.x
 :Manual section: 3
 
 
