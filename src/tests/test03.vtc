@@ -5,6 +5,7 @@ server s1 {
        expect req.http.t1 == "1"
        expect req.http.t2 == "123"
        expect req.http.t3 == ""
+       expect req.http.t6 == "1"
        expect req.http.l1 == "1"
        expect req.http.l2 == "3"
        expect req.http.l3 == "0"
@@ -27,6 +28,7 @@ server s1 {
        expect req.http.t2 == ""
        expect req.http.t3 == ""
        expect req.http.t4 == ""
+       expect req.http.t6 == ""
        expect req.http.l1 == "0"
        expect req.http.l2 == "0"
        expect req.http.l3 == "0"
@@ -55,6 +57,7 @@ varnish v1 -vcl+backend {
 		set req.http.t3 = regsuball(parseform.get("aaa"), "\r\n", "@");
 		set req.http.t4 = regsuball(parseform.get(key="a", glue="*******"), "\r\n", "@");
 		set req.http.t5 = parseform.get(key="aa", encode=urlencode);
+		set req.http.t6 = regsuball(parseform.get("A"), "\r\n", "@");
 		set req.http.l1 = parseform.len("a");
 		set req.http.l2 = parseform.len("aa");
 		set req.http.l3 = parseform.len("aaa");
