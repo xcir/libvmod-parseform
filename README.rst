@@ -13,8 +13,8 @@ Parse to POST request
 -------------------------------
 
 :Author: Shohei Tanaka(@xcir)
-:Date: 2017-09-30
-:Version: 41.3
+:Date: 2017-10-16
+:Version: 41.4
 :Support Varnish Version: 4.1.x
 :Manual section: 3
 
