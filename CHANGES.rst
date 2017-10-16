@@ -1,6 +1,6 @@
 This is a running log of changes to libvmod-parseform.
 
-libvmod-parseform 41.3 (2017-10-16)
+libvmod-parseform 41.4 (2017-10-16)
 --------------------------------
 
 * Fix: case sensitive
