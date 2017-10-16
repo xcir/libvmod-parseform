@@ -227,7 +227,7 @@ VCL_BLOB search_plain(VRT_CTX, VCL_STRING key, VCL_STRING glue, struct vsb *vsb)
 			lim = memrchr(eq, '\r', nxeq- eq);
 			if(lim[1] != '\n') break;
 		}
-		if(keylen == eq -st && !memcmp(st, key, keylen)){
+		if(keylen == eq -st && !strncasecmp(st, key, keylen)){
 			bodylen = lim -eq -1;
 			if(u < bodylen + glen +1){
 				WS_Release(ctx->ws, 0);
@@ -315,7 +315,7 @@ VCL_BLOB search_multipart(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb *v
 		lim  +=4;
 		namelim = memchr(name, '"', last - name);
 		if(namelim == NULL || lim < namelim) break;
-		if(keylen == namelim - name  && !memcmp(name, key, keylen)){
+		if(keylen == namelim - name  && !strncasecmp(name, key, keylen)){
 			
 			bodylen = nxt -lim -2;
 			if(u < bodylen +glen +1){
@@ -383,7 +383,7 @@ VCL_BLOB search_urlencoded(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb *
 			continue;
 		}
 		
-		if((pkey == porg || (pkey -1)[0] == '&') && !memcmp(pkey, key, keylen)){
+		if((pkey == porg || (pkey -1)[0] == '&') && !strncasecmp(pkey, key, keylen)){
 			//key match
 			amp = memchr(p, '&', last -p);
 			if(amp == NULL){
@@ -490,7 +490,7 @@ vmod_get_blob(VRT_CTX, struct vmod_priv *priv, VCL_STRING key, VCL_STRING glue, 
 		if(ret->len > 0 && decode){
 			ret = urldecode(ctx, ret->priv);
 		}
-	}else if(strlen(ctype) > 19 && !memcmp(ctype, "multipart/form-data", 19)){
+	}else if(strlen(ctype) > 19 && !strncasecmp(ctype, "multipart/form-data", 19)){
 		ret = search_multipart (ctx, key, glue, ((struct vmod_priv_parseform *)priv->priv)->vsb);
 	}else if(!strcasecmp(ctype, "text/plain")){
 		ret = search_plain     (ctx, key, glue, ((struct vmod_priv_parseform *)priv->priv)->vsb);
