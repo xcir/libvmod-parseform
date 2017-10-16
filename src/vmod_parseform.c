@@ -12,7 +12,6 @@
 
 #include "vtim.h"
 #include "vcc_parseform_if.h"
-
 struct vmod_priv_parseform{
 	unsigned	magic;
 #define VMOD_PRIV_PARSEFORM_MAGIC	0xf8afce84
@@ -23,7 +22,7 @@ static const struct gethdr_s vmod_priv_parseform_contenttype =
     { HDR_REQ, "\015content-type:"};
 
 static struct surlenc {
-	char chkenc[256];
+	char hex2bin[256];
 	char bin2hex[16];
 	char skipchr[256];
 } urlenc;
@@ -35,14 +34,21 @@ static void initUrlcode(){
 	char *skip    = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 	int i;
 	
-	memset(urlenc.chkenc,  0, 256);
+	memset(urlenc.hex2bin, -1, 256);
 	memset(urlenc.skipchr, 0, 256);
 
 	for (i=0; i< 16; i++)
 		urlenc.bin2hex[i] = bin2hex[i];
 
-	for (p = hex; *p; p++)
-		urlenc.chkenc[(int)*p] = 1;
+	for (p = hex; *p; p++){
+		if(p[0] >= '0' && p[0] <= '9'){
+			urlenc.hex2bin[(int)*p] = p[0] - '0';
+		}else if(p[0] >= 'A' && p[0] <= 'F'){
+			urlenc.hex2bin[(int)*p] = p[0] - 'A' +10;
+		}else{
+			urlenc.hex2bin[(int)*p] = p[0] - 'a' +10;
+		}
+	}
 	for (p = skip; *p; p++)
 		urlenc.skipchr[(int)*p] = 1;
 
@@ -91,8 +97,6 @@ VCL_BLOB urldecode(VRT_CTX, VCL_STRING txt){
 	const char *last, *per, *nxtper;
 	unsigned   u;
 	char       *rpp, *rp, *plus;
-	char       tmp;
-	int        i;
 	struct vmod_priv *p;
 	p = (void*)WS_Alloc(ctx->ws, sizeof *p);
 	AN(p);
@@ -123,18 +127,8 @@ VCL_BLOB urldecode(VRT_CTX, VCL_STRING txt){
 			rp +=bodylen;
 			u  -=bodylen;
 		}
-		if(urlenc.chkenc[(int)nxtper[1]] && urlenc.chkenc[(int)nxtper[2]]){
-			tmp =0;
-			for(i=1; i<=2; i++){
-				if      (nxtper[i] >= '0' && nxtper[i] <= '9'){
-					tmp |=(nxtper[i] - '0') << (8 -i *4);
-				}else if(nxtper[i] >= 'A' && nxtper[i] <= 'F'){
-					tmp |=(nxtper[i] - 'A' +10) << (8 -i *4);
-				}else{
-					tmp |=(nxtper[i] - 'a' +10) << (8 -i *4);
-				}
-			}
-			rp[0] = tmp;
+		if(urlenc.hex2bin[(int)nxtper[1]] >= 0 && urlenc.hex2bin[(int)nxtper[2]] >= 0){
+			rp[0] = (urlenc.hex2bin[(int)nxtper[1]] << 4) | urlenc.hex2bin[(int)nxtper[2]];
 			rp ++;
 			u  --;
 			nxtper+=3;
@@ -233,7 +227,7 @@ VCL_BLOB search_plain(VRT_CTX, VCL_STRING key, VCL_STRING glue, struct vsb *vsb)
 			lim = memrchr(eq, '\r', nxeq- eq);
 			if(lim[1] != '\n') break;
 		}
-		if(keylen == eq -st && !memcmp(st, key, keylen)){
+		if(keylen == eq -st && !strncasecmp(st, key, keylen)){
 			bodylen = lim -eq -1;
 			if(u < bodylen + glen +1){
 				WS_Release(ctx->ws, 0);
@@ -321,7 +315,7 @@ VCL_BLOB search_multipart(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb *v
 		lim  +=4;
 		namelim = memchr(name, '"', last - name);
 		if(namelim == NULL || lim < namelim) break;
-		if(keylen == namelim - name  && !memcmp(name, key, keylen)){
+		if(keylen == namelim - name  && !strncasecmp(name, key, keylen)){
 			
 			bodylen = nxt -lim -2;
 			if(u < bodylen +glen +1){
@@ -389,7 +383,7 @@ VCL_BLOB search_urlencoded(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb *
 			continue;
 		}
 		
-		if((pkey == porg || (pkey -1)[0] == '&') && !memcmp(pkey, key, keylen)){
+		if((pkey == porg || (pkey -1)[0] == '&') && !strncasecmp(pkey, key, keylen)){
 			//key match
 			amp = memchr(p, '&', last -p);
 			if(amp == NULL){
@@ -491,14 +485,14 @@ vmod_get_blob(VRT_CTX, struct vmod_priv *priv, VCL_STRING key, VCL_STRING glue, 
 	
 	const char *ctype= VRT_GetHdr(ctx, &vmod_priv_parseform_contenttype);
 	
-	if(!strcmp(ctype, "application/x-www-form-urlencoded")){
+	if(!strcasecmp(ctype, "application/x-www-form-urlencoded")){
 		ret = search_urlencoded(ctx, key, glue, ((struct vmod_priv_parseform *)priv->priv)->vsb);
 		if(ret->len > 0 && decode){
 			ret = urldecode(ctx, ret->priv);
 		}
-	}else if(strlen(ctype) > 19 && !memcmp(ctype, "multipart/form-data", 19)){
+	}else if(strlen(ctype) > 19 && !strncasecmp(ctype, "multipart/form-data", 19)){
 		ret = search_multipart (ctx, key, glue, ((struct vmod_priv_parseform *)priv->priv)->vsb);
-	}else if(!strcmp(ctype, "text/plain")){
+	}else if(!strcasecmp(ctype, "text/plain")){
 		ret = search_plain     (ctx, key, glue, ((struct vmod_priv_parseform *)priv->priv)->vsb);
 	}else{
 		struct vmod_priv *nr = NULL;
