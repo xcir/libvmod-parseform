@@ -1,5 +1,10 @@
 This is a running log of changes to libvmod-parseform.
 
+libvmod-parseform 41.3 (2017-10-16)
+--------------------------------
+
+* Fix: case sensitive
+
 libvmod-parseform 41.3 (2017-09-30)
 --------------------------------
 * Support Varnish4.1.x (pr#3 thanks gquintard)
