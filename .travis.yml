@@ -1,43 +1,34 @@
 ---
 sudo: required
-dist: trusty
+dist: xenial
 
 language: c
-
-env:
-  global:
-   # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
-   #   via the "travis encrypt" command using the project repo's public key
-   - secure: "e8mSFlpVVBfLK/kkZcyBqnuJUmFLg6+6mch2MQ81kT9DFJmpX5LpJqicjKwY6NzBF9xo+So87qYZUY/8+s/sIU0KuHtwnzBYTLibUaZEbj3OuTcDYgkiZvmEF+hWml4uPxegkZ9YPjfY44O4itQfIKGHB3YHk3svsbeYJNiQhsqTvyu6n0GiM4UMy7rFyaaNM+/meUZCqqV1CRdPHAffvLmDsenh6hCVXUbGa7XC2j7WT7ATUT5By0VpilC4aF/yXFwweIwI2MswsH4qn+PVL0UCkmFdNe1qzG8Xw7Nqx3nlT7J9gKvNSkr0CY5fl6gZXOgXtTIKuDo2+x63RpejQK1G3Fo0zV8ptPKKp03Axysh9JuO40zQ5wkmNup7JDQzyNEMHXWa4siFd0C/LgrRarJLrfEiHnxEEloJEzZD2sr6wlFJIspnOOT3W8h/AdeS9QOuIVPMbtvJkKQJ8dM3+nXm/vNeYne07xyAMUJb7sv5vo1rQu6VH3thyR2VqhVFHbFtz+Dw3Y7FmjulqT/y8KZmiWwqDybMtE4zMOMkV2xdyHAwnSGrHCMXlN9w4p67vQ6O8gPI56n0cLJh4WpmWKh4oZMmzIibjYeDPL1VptOJvIWbW9J2bFfOYFdvSViAlciGcOyomMgyiBCHumyJYo2ZRMZth6PBUrBeqoJvtC0="
 
 addons:
   apt:
     packages:
     - python-docutils
-  coverity_scan:
-    project:
-      name: "xcir/libvmod-parseform"
-      description: "Build submitted via Travis CI"
-    notification_email: kokoniimasu+xcir@gmail.com
-    build_command_prepend: "./autogen.sh; ./configure --prefix=/usr; make clean"
-    build_command:   "make -j 4"
-    branch_pattern: master
+    - libmhash-dev
+    - python-sphinx
 
 before_install:
   - set -e
-  - wget https://varnish-cache.org/_downloads/varnish-5.2.0.tgz
+  - wget $VARSNIH_TGZ
   - tar -zxf varnish-*.tgz
   - pushd varnish-*/
   - ./configure --prefix=/usr
   - make -sj32
   - sudo make install
-  - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-
   - popd
 
 before_script:
   - ./autogen.sh
   - ./configure --prefix=/usr
   - make -j4
+
+env:
+  - VARSNIH_TGZ=https://varnish-cache.org/_downloads/varnish-5.2.1.tgz
+  - VARSNIH_TGZ=https://varnish-cache.org/_downloads/varnish-5.1.3.tgz
 
 script:
   - make check -j4
