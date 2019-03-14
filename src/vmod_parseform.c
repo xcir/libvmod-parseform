@@ -6,10 +6,17 @@
 #include <stdlib.h>
 
 /* need vcl.h before vrt.h for vmod_evet_f typedef */
+#include <cache/cache_varnishd.h>
 #include "vcl.h"
-#include "vrt.h"
-#include "cache/cache.h"
+#ifndef VRT_H_INCLUDED
+	#include "vrt.h"
+#endif
+#ifndef VDEF_H_INCLUDED
+	#include <vdef.h>
+#endif
+#include "vre.h"
 
+#include "vsb.h"
 #include "vtim.h"
 #include "vcc_parseform_if.h"
 struct vmod_priv_parseform{
@@ -167,7 +174,7 @@ VCL_BLOB urldecode(VRT_CTX, VCL_STRING txt){
 }
 
 
-static int __match_proto__(objiterate_f)
+static int
 IterCopyReqBody(void *priv, int flush, const void *ptr, ssize_t len)
 {
 	struct vsb *iter_vsb = priv;
@@ -425,7 +432,7 @@ VCL_BLOB search_urlencoded(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb *
 }
 
 
-int __match_proto__(vmod_event_f)
+int
 event_function(VRT_CTX, struct vmod_priv *priv, enum vcl_event_e e)
 {
 	switch (e) {
