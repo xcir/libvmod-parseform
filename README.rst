@@ -13,7 +13,7 @@ Parse to POST request
 -------------------------------
 
 :Author: Shohei Tanaka(@xcir)
-:Date: ----
+:Date: n/a
 :Version: trunk
 :Support Varnish Version: 6.0.x
 :Manual section: 3
