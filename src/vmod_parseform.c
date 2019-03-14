@@ -5,15 +5,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-/* need vcl.h before vrt.h for vmod_evet_f typedef */
 #include <cache/cache_varnishd.h>
 #include "vcl.h"
-#ifndef VRT_H_INCLUDED
-	#include "vrt.h"
-#endif
-#ifndef VDEF_H_INCLUDED
-	#include <vdef.h>
-#endif
 #include "vre.h"
 
 #include "vsb.h"
@@ -70,7 +63,7 @@ VCL_STRING urlencode(VRT_CTX, VCL_BLOB blob){
 	rpp = rp = ctx->ws->f;
 	
 
-	for (p = blob->priv; p < (char*)(blob->priv +blob->len); p++){
+	for (p = blob->blob; p < (char*)(blob->blob +blob->len); p++){
 		if(u < 4){
 			WS_Release(ctx->ws, 0);
 			WS_MarkOverflow(ctx->ws);
@@ -104,7 +97,7 @@ VCL_BLOB urldecode(VRT_CTX, VCL_STRING txt){
 	const char *last, *per, *nxtper;
 	unsigned   u;
 	char       *rpp, *rp, *plus;
-	struct vmod_priv *p;
+	struct vrt_blob *p;
 	p = (void*)WS_Alloc(ctx->ws, sizeof *p);
 	AN(p);
 	memset(p, 0, sizeof *p);
@@ -169,17 +162,17 @@ VCL_BLOB urldecode(VRT_CTX, VCL_STRING txt){
 	
 	
 	WS_Release(ctx->ws, rp - rpp);
-	p->priv = rpp;
+	p->blob = rpp;
 	return p;
 }
 
 
-static int
-IterCopyReqBody(void *priv, int flush, const void *ptr, ssize_t len)
+static int v_matchproto_(objiterate_f)
+IterCopyReqBody(void *priv, unsigned flush, const void *ptr, ssize_t l)
 {
 	struct vsb *iter_vsb = priv;
 
-	return (VSB_bcat(iter_vsb, ptr, len));
+	return (VSB_bcat(iter_vsb, ptr, l));
 }
 
 void
@@ -207,7 +200,7 @@ VCL_BLOB search_plain(VRT_CTX, VCL_STRING key, VCL_STRING glue, struct vsb *vsb)
 
 	unsigned u;
 	char     *rpp, *rp;
-	struct vmod_priv *bp;
+	struct vrt_blob *bp;
 	bp = (void*)WS_Alloc(ctx->ws, sizeof *bp);
 	AN(bp);
 	memset(bp, 0, sizeof *bp);
@@ -265,7 +258,7 @@ VCL_BLOB search_plain(VRT_CTX, VCL_STRING key, VCL_STRING glue, struct vsb *vsb)
 	rp++;
 	u--;
 	bp->len  = rp -rpp -1;
-	bp->priv = rpp;
+	bp->blob = rpp;
 	WS_Release(ctx->ws, rp - rpp);
 	return bp;
 }
@@ -279,7 +272,7 @@ VCL_BLOB search_multipart(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb *v
 	
 	unsigned u;
 	char     *rpp, *rp;
-	struct vmod_priv *bp;
+	struct vrt_blob *bp;
 	bp = (void*)WS_Alloc(ctx->ws, sizeof *bp);
 	AN(bp);
 	memset(bp, 0, sizeof *bp);
@@ -351,7 +344,7 @@ VCL_BLOB search_multipart(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb *v
 	rp++;
 	u--;
 	bp->len  = rp -rpp -1;
-	bp->priv = rpp;
+	bp->blob = rpp;
 	WS_Release(ctx->ws, rp - rpp);
 	return bp;
 
@@ -366,7 +359,7 @@ VCL_BLOB search_urlencoded(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb *
 
 	unsigned u;
 	char *rpp, *rp;
-	struct vmod_priv *bp;
+	struct vrt_blob *bp;
 	bp = (void*)WS_Alloc(ctx->ws, sizeof *bp);
 	AN(bp);
 	memset(bp, 0, sizeof *bp);
@@ -426,14 +419,14 @@ VCL_BLOB search_urlencoded(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb *
 	rp++;
 	u--;
 	bp->len  = rp -rpp -1;
-	bp->priv = rpp;
+	bp->blob = rpp;
 	WS_Release(ctx->ws, rp - rpp);
 	return bp;
 }
 
 
 int
-event_function(VRT_CTX, struct vmod_priv *priv, enum vcl_event_e e)
+vmod_event_function(VRT_CTX, struct vmod_priv *priv, enum vcl_event_e e)
 {
 	switch (e) {
 	case VCL_EVENT_LOAD:
@@ -465,12 +458,11 @@ void getbody(VRT_CTX, struct vmod_priv **priv){
 VCL_BLOB
 vmod_get_blob(VRT_CTX, struct vmod_priv *priv, VCL_STRING key, VCL_STRING glue, VCL_BOOL decode)
 {
-	
 
 	if (ctx->req->req_body_status != REQ_BODY_CACHED) {
 		VSLb(ctx->vsl, SLT_VCL_Error,
 		   "Unbuffered req.body");
-		struct vmod_priv *nr = NULL;
+		struct vrt_blob *nr = NULL;
 		nr = (void*)WS_Alloc(ctx->ws, sizeof *nr);
 		AN(nr);
 		memset(nr, 0, sizeof *nr);
@@ -479,14 +471,14 @@ vmod_get_blob(VRT_CTX, struct vmod_priv *priv, VCL_STRING key, VCL_STRING glue, 
 	if (ctx->method != VCL_MET_RECV) {
 		VSLb(ctx->vsl, SLT_VCL_Error,
 		    "len_req_body can only be used in vcl_recv{}");
-		struct vmod_priv *nr = NULL;
+		struct vrt_blob *nr = NULL;
 		nr = (void*)WS_Alloc(ctx->ws, sizeof *nr);
 		AN(nr);
 		memset(nr, 0, sizeof *nr);
 		return nr;
 	}
 	
-	const struct vmod_priv *ret = NULL;
+	const struct vrt_blob *ret = NULL;
 	
 	if (priv->priv == NULL) getbody(ctx, &priv);
 	
@@ -495,14 +487,14 @@ vmod_get_blob(VRT_CTX, struct vmod_priv *priv, VCL_STRING key, VCL_STRING glue, 
 	if(!strcasecmp(ctype, "application/x-www-form-urlencoded")){
 		ret = search_urlencoded(ctx, key, glue, ((struct vmod_priv_parseform *)priv->priv)->vsb);
 		if(ret->len > 0 && decode){
-			ret = urldecode(ctx, ret->priv);
+			ret = urldecode(ctx, ret->blob);
 		}
 	}else if(strlen(ctype) > 19 && !strncasecmp(ctype, "multipart/form-data", 19)){
 		ret = search_multipart (ctx, key, glue, ((struct vmod_priv_parseform *)priv->priv)->vsb);
 	}else if(!strcasecmp(ctype, "text/plain")){
 		ret = search_plain     (ctx, key, glue, ((struct vmod_priv_parseform *)priv->priv)->vsb);
 	}else{
-		struct vmod_priv *nr = NULL;
+		struct vrt_blob *nr = NULL;
 		nr = (void*)WS_Alloc(ctx->ws, sizeof *nr);
 		AN(nr);
 		memset(nr, 0, sizeof *nr);
@@ -517,14 +509,14 @@ vmod_get(VRT_CTX, struct vmod_priv *priv, VCL_STRING key, VCL_STRING glue, VCL_E
 	if(!strcmp(encode, "urlencode")){
 		enc = 1;
 	}
-	const struct vmod_priv *ret = vmod_get_blob(ctx, priv, key, glue, enc);
+	const struct vrt_blob *ret = vmod_get_blob(ctx, priv, key, glue, enc);
 	const char *rc = NULL;
 
 	if(ret && ret->len > 0){
 		if(enc){
 			rc = urlencode(ctx, ret);
 		}else{
-			rc = ret->priv;
+			rc = ret->blob;
 		}
 		return rc;
 	}
@@ -534,21 +526,21 @@ vmod_get(VRT_CTX, struct vmod_priv *priv, VCL_STRING key, VCL_STRING glue, VCL_E
 VCL_INT
 vmod_len(VRT_CTX, struct vmod_priv *priv, VCL_STRING key, VCL_STRING glue)
 {
-	const struct vmod_priv *ret = vmod_get_blob(ctx, priv, key, glue, 0);
+	const struct vrt_blob *ret = vmod_get_blob(ctx, priv, key, glue, 0);
 	return ret->len;
 }
 
 VCL_STRING
 vmod_urldecode(VRT_CTX, VCL_STRING txt){
-	const struct vmod_priv *p;
+	const struct vrt_blob *p;
 	p = urldecode(ctx,txt);
-	return p->priv;
+	return p->blob;
 }
 
 VCL_STRING
 vmod_urlencode(VRT_CTX, VCL_STRING txt){
-	struct vmod_priv p;
-	p.priv = (void*)txt;
+	struct vrt_blob p;
+	p.blob = (void*)txt;
 	p.len  = strlen(txt);
 	return urlencode(ctx, &p);
 }
