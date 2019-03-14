@@ -13,9 +13,9 @@ Parse to POST request
 -------------------------------
 
 :Author: Shohei Tanaka(@xcir)
-:Date: n/a
-:Version: trunk
-:Support Varnish Version: 6.0.x
+:Date: 2019-03-14
+:Version: 61.4
+:Support Varnish Version: 6.0.x, 6.1.x
 :Manual section: 3
 
 
@@ -250,6 +250,6 @@ COPYRIGHT
 This document is licensed under the same license as the
 libvmod-awsrest project. See LICENSE for details.
 
-* Copyright (c) 2012-2017 Shohei Tanaka(@xcir)
+* Copyright (c) 2012-2019 Shohei Tanaka(@xcir)
 
 request-body access based on libvmod-bodyaccess( https://github.com/aondio/libvmod-bodyaccess )
