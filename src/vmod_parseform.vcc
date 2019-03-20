@@ -7,6 +7,7 @@
 #
 
 $Module parseform 3 Parseform VMOD
+$ABI vrt
 
 DESCRIPTION
 ===========
