@@ -37,4 +37,5 @@ compiler:
   - clang
   - gcc
 
-allow_failures: VARSNIH_TGZ=https://github.com/varnishcache/varnish-cache/archive/master.tar.gz
+allow_failures:
+ - env: VARSNIH_TGZ=https://github.com/varnishcache/varnish-cache/archive/master.tar.gz
