@@ -27,6 +27,7 @@ before_script:
   - make -j4
 
 env:
+  - VARSNIH_TGZ=https://github.com/varnishcache/varnish-cache/archive/master.tar.gz
   - VARSNIH_TGZ=https://varnish-cache.org/_downloads/varnish-6.2.0.tgz
 
 script:
@@ -35,3 +36,6 @@ script:
 compiler:
   - clang
   - gcc
+
+matrix:
+  allow_failures: VARSNIH_TGZ=https://github.com/varnishcache/varnish-cache/archive/master.tar.gz
