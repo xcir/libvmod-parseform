@@ -34,9 +34,8 @@ env:
     - VARSNIH_TGZ=https://varnish-cache.org/_downloads/varnish-6.2.0.tgz
 
 compiler:
-  matrix:
-    - clang
-    - gcc
+  - clang
+  - gcc
 
 matrix:
   allow_failures:
