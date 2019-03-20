@@ -13,7 +13,7 @@ addons:
 before_install:
   - set -e
   - wget $VARSNIH_TGZ
-  - tar -zxf varnish-*.tgz
+  - tar -zxf *gz
   - pushd varnish-*/
   - ./configure --prefix=/usr
   - make -sj32
