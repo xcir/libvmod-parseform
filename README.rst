@@ -11,8 +11,8 @@ Parse to POST request
 -------------------------------
 
 :Author: Shohei Tanaka(@xcir)
-:Date: n/a
-:Version: trunk
+:Date: 2019-03-20
+:Version: 62.6
 :Support Varnish Version: 6.2.x
 :Manual section: 3
 
@@ -21,6 +21,13 @@ SYNOPSIS
 ========
 
 import parseform;
+
+
+For Varnish6.1.x
+=================
+
+See this link. https://github.com/xcir/libvmod-parseform/tree/varnish61
+
 
 DESCRIPTION
 ===========
