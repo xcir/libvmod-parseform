@@ -1,5 +1,10 @@
 This is a running log of changes to libvmod-parseform.
 
+libvmod-parseform 61.5 (2019-03-20)
+--------------------------------
+
+* Change ABI check from strict to vrt.
+
 libvmod-parseform 61.4 (2019-03-14)
 --------------------------------
 

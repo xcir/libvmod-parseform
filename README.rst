@@ -11,8 +11,8 @@ Parse to POST request
 -------------------------------
 
 :Author: Shohei Tanaka(@xcir)
-:Date: 2019-03-14
-:Version: 61.4
+:Date: 2019-03-20
+:Version: 61.5
 :Support Varnish Version: 6.0.x, 6.1.x
 :Manual section: 3
 
