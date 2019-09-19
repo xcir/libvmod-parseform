@@ -59,7 +59,11 @@ VCL_STRING urlencode(VRT_CTX, VCL_BLOB blob){
 	unsigned   u;
 	char       *rpp, *rp;
 	const char *p;
+	#if VRT_MAJOR_VERSION > 9
+	u = WS_ReserveAll(ctx->ws);
+	#else
 	u = WS_Reserve(ctx->ws, 0);
+	#endif
 	rpp = rp = ctx->ws->f;
 	
 
@@ -102,7 +106,11 @@ VCL_BLOB urldecode(VRT_CTX, VCL_STRING txt){
 	AN(p);
 	memset(p, 0, sizeof *p);
 	
+	#if VRT_MAJOR_VERSION > 9
+	u = WS_ReserveAll(ctx->ws);
+	#else
 	u = WS_Reserve(ctx->ws, 0);
+	#endif
 	rpp = rp = ctx->ws->f;
 	last = txt + strlen(txt);
 	ssize_t bodylen;
@@ -214,7 +222,11 @@ VCL_BLOB search_plain(VRT_CTX, VCL_STRING key, VCL_STRING glue, struct vsb *vsb)
 	glen   = strlen(glue);
 	keylen = strlen(key);
 	
+	#if VRT_MAJOR_VERSION > 9
+	u = WS_ReserveAll(ctx->ws);
+	#else
 	u = WS_Reserve(ctx->ws, 0);
+	#endif
 	rpp = rp = ctx->ws->f;
 	
 	while(1){
@@ -299,7 +311,11 @@ VCL_BLOB search_multipart(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb *v
 	keylen = strlen(key);
 	glen   = strlen(glue);
 
-	u   = WS_Reserve(ctx->ws, 0);
+	#if VRT_MAJOR_VERSION > 9
+	u = WS_ReserveAll(ctx->ws);
+	#else
+	u = WS_Reserve(ctx->ws, 0);
+	#endif
 	rpp = rp = ctx->ws->f;
 
 	while(1){
@@ -370,7 +386,11 @@ VCL_BLOB search_urlencoded(VRT_CTX,VCL_STRING key, VCL_STRING glue, struct vsb *
 	last   = porg + VSB_len(vsb);
 	keylen = strlen(key);
 	
-	u      = WS_Reserve(ctx->ws, 0);
+	#if VRT_MAJOR_VERSION > 9
+	u = WS_ReserveAll(ctx->ws);
+	#else
+	u = WS_Reserve(ctx->ws, 0);
+	#endif
 	rpp    = rp = ctx->ws->f;
 	
 	
