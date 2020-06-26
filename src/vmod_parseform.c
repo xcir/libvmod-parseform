@@ -485,21 +485,21 @@ vmod_get_blob(VRT_CTX, struct vmod_priv *priv, VCL_STRING key, VCL_STRING glue, 
 		memset(nr, 0, sizeof *nr);
 		return nr;
 	}
-	
+
 	const struct vmod_priv *ret = NULL;
-	
+
 	if (priv->priv == NULL) getbody(ctx, &priv);
-	
+
 	const char *ctype= VRT_GetHdr(ctx, &vmod_priv_parseform_contenttype);
-	
-	if(!strcasecmp(ctype, "application/x-www-form-urlencoded")){
+
+	if(!strncasecmp(ctype, "application/x-www-form-urlencoded", 33)){
 		ret = search_urlencoded(ctx, key, glue, ((struct vmod_priv_parseform *)priv->priv)->vsb);
 		if(ret->len > 0 && decode){
 			ret = urldecode(ctx, ret->priv);
 		}
 	}else if(strlen(ctype) > 19 && !strncasecmp(ctype, "multipart/form-data", 19)){
 		ret = search_multipart (ctx, key, glue, ((struct vmod_priv_parseform *)priv->priv)->vsb);
-	}else if(!strcasecmp(ctype, "text/plain")){
+	}else if(!strncasecmp(ctype, "text/plain", 10)){
 		ret = search_plain     (ctx, key, glue, ((struct vmod_priv_parseform *)priv->priv)->vsb);
 	}else{
 		struct vmod_priv *nr = NULL;
